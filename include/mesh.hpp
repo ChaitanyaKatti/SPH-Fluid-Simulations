@@ -14,15 +14,21 @@ private:
     Texture* texture;
     Shader* shader;
     std::vector<unsigned int> indices;
-    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> positions;
     std::vector<glm::vec3> normals;
     std::vector<glm::vec2> uvs;
-
+    std::vector<float> vertices;
+    glm::mat4 model;
+    std::vector<glm::vec3> offsets; // for instanced rendering
     void setupMesh();
 public:
     Mesh(const char* path, Texture* const texture, Shader* const shader);
-    void Draw(const glm::mat4 model);
     void Draw();
+    void Draw(const glm::mat4 model);
+    void SetInstances(int n, const glm::vec3* offset);
+    void DrawInstanced(const glm::mat4 model, const int n);
     void setTexture(Texture* const texture);
     void setShader(Shader* const shader);
+    void setModel(const glm::mat4 model);
+    glm::mat4 getModel();
 };

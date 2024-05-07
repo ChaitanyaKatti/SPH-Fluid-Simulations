@@ -6,10 +6,11 @@
 #include <tiny_obj_loader.h>
 #include <iostream>
 
-Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader){
+Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader) {
     this->path = path;
     this->texture = texture;
     this->shader = shader;
+    this->model = glm::mat4(1.0f);
 
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -21,75 +22,58 @@ Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader){
         throw std::runtime_error(warn + err);
     }
 
-	tinyobj::index_t i0, i1, i2;
-	for (size_t i = 0; i < shapes[0].mesh.indices.size(); i+=3) {
-		// Get the vertices of the triangle
-		i0 = shapes[0].mesh.indices[i];
-		i1 = shapes[0].mesh.indices[i+1];
-		i2 = shapes[0].mesh.indices[i+2];
+    tinyobj::index_t idx;
+    for (size_t i = 0; i < shapes[0].mesh.indices.size(); ++i) {
+        idx = shapes[0].mesh.indices[i];
+        // Retrieve vertex data using index
+        glm::vec3 vertex(attrib.vertices[3 * idx.vertex_index], 
+                         attrib.vertices[3 * idx.vertex_index + 1], 
+                         attrib.vertices[3 * idx.vertex_index + 2]);
+        glm::vec3 normal(attrib.normals[3 * idx.normal_index], 
+                         attrib.normals[3 * idx.normal_index + 1], 
+                         attrib.normals[3 * idx.normal_index + 2]);
+        glm::vec2 uv(attrib.texcoords[2 * idx.texcoord_index], 
+                     attrib.texcoords[2 * idx.texcoord_index + 1]);
 
-		// Get the vertices of the triangle
-		glm::vec3 v0(attrib.vertices[3*i0.vertex_index], attrib.vertices[3*i0.vertex_index+1], attrib.vertices[3*i0.vertex_index+2]);
-		glm::vec3 v1(attrib.vertices[3*i1.vertex_index], attrib.vertices[3*i1.vertex_index+1], attrib.vertices[3*i1.vertex_index+2]);
-		glm::vec3 v2(attrib.vertices[3*i2.vertex_index], attrib.vertices[3*i2.vertex_index+1], attrib.vertices[3*i2.vertex_index+2]);
-		// Get the normals of the triangle
-		glm::vec3 n0(attrib.normals[3*i0.normal_index], attrib.normals[3*i0.normal_index+1], attrib.normals[3*i0.normal_index+2]);
-		glm::vec3 n1(attrib.normals[3*i1.normal_index], attrib.normals[3*i1.normal_index+1], attrib.normals[3*i1.normal_index+2]);
-		glm::vec3 n2(attrib.normals[3*i2.normal_index], attrib.normals[3*i2.normal_index+1], attrib.normals[3*i2.normal_index+2]);
-		// Get the uv coordinates of the triangle
-		glm::vec2 uv0(attrib.texcoords[2*i0.texcoord_index], attrib.texcoords[2*i0.texcoord_index+1]);
-		glm::vec2 uv1(attrib.texcoords[2*i1.texcoord_index], attrib.texcoords[2*i1.texcoord_index+1]);
-		glm::vec2 uv2(attrib.texcoords[2*i2.texcoord_index], attrib.texcoords[2*i2.texcoord_index+1]);
+        // Add to respective vectors
+        positions.push_back(vertex);
+        normals.push_back(normal);
+        uvs.push_back(uv);
 
-        // Add the vertices to the mesh
-        vertices.push_back(v0);
-        vertices.push_back(v1);
-        vertices.push_back(v2);
-        
-        // Add the normals to the mesh
-        normals.push_back(n0);
-        normals.push_back(n1);
-        normals.push_back(n2);
-        
-        // Add the uv coordinates to the mesh
-        uvs.push_back(uv0);
-        uvs.push_back(uv1);
-        uvs.push_back(uv2);
-
-        // Add the indices to the mesh
-        indices.push_back(i);
-        indices.push_back(i+1);
-        indices.push_back(i+2);
+        // Add to vertices vector
+        vertices.push_back(vertex.x);
+        vertices.push_back(vertex.y);
+        vertices.push_back(vertex.z);
+        vertices.push_back(normal.x);
+        vertices.push_back(normal.y);
+        vertices.push_back(normal.z);
+        vertices.push_back(uv.x);
+        vertices.push_back(uv.y);
     }
-
+    
     setupMesh();
 }
 
-void Mesh::setupMesh(){
-    const GLsizei stride = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2);
+void Mesh::setupMesh() {
+    const GLsizei stride = 8 * sizeof(float);
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
-
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
-
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    
     // vertex positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
 
     // vertex normals
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(glm::vec3)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     // vertex texture coords
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(2*sizeof(glm::vec3)));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
@@ -98,19 +82,59 @@ void Mesh::setupMesh(){
 void Mesh::Draw(const glm::mat4 model)
 {
     shader->use();
-    shader->setMat4("model", model);
-    texture->Bind();
+    shader->setMat4("modelMatrix", model);
+    shader->setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+    if (texture)
+    {
+        texture->Bind();
+    }
+    else{
+        shader->setVec3("color", glm::vec3(1.0f));
+    }
+    
     glBindVertexArray(VAO);
-    // dont use ebos for now
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-    // use ebos for now
-    // glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-    glBindVertexArray(0);
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 8);
+    glBindVertexArray(0); // Unbind VAO
 }
 
 void Mesh::Draw(){
-    glm::mat4 model = glm::mat4(1.0f);
-    Draw(model);
+    Draw(this->model);
+}
+
+void Mesh::SetInstances(int n, const glm::vec3* offsets){
+    this->offsets = std::vector<glm::vec3>(offsets, offsets + n);
+    
+    // Generate buffer for offsets
+    unsigned int instanceVBO;
+    glGenBuffers(1, &instanceVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBufferData(GL_ARRAY_BUFFER, n * sizeof(glm::vec3), offsets, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Bind VAO
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glVertexAttribDivisor(3, 1);
+    glBindVertexArray(0);
+}
+
+void Mesh::DrawInstanced(const glm::mat4 model, const int n){
+    shader->use();
+    shader->setMat4("modelMatrix", model);
+    shader->setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
+    if (texture)
+    {
+        texture->Bind();
+    }
+    else{
+        shader->setVec3("color", glm::vec3(1.0f));
+    }
+    
+    glBindVertexArray(VAO);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, vertices.size() / 8, n);
+    glBindVertexArray(0); // Unbind VAO
 }
 
 void Mesh::setTexture(Texture* const texture){
@@ -119,4 +143,12 @@ void Mesh::setTexture(Texture* const texture){
 
 void Mesh::setShader(Shader* const shader){
     this->shader = shader;
+}
+
+void Mesh::setModel(const glm::mat4 model){
+    this->model = model;
+}
+
+glm::mat4 Mesh::getModel(){
+    return model;
 }

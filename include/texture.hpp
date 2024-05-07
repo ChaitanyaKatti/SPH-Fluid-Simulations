@@ -2,6 +2,7 @@
 
 #include <string>
 
+
 typedef enum
 {
     DIFFUSE,
@@ -12,10 +13,12 @@ typedef enum
 class Texture
 {
 private:
+    int GL_TEXTURE_IDX;
     unsigned int ID;
-    TextureType type;
     std::string path;
+    TextureType type;
 public:
-    Texture(unsigned int ID, const char* path, TextureType type);
+    Texture(int GL_TEXTURE_IDX, const char* path, TextureType type);
     void Bind();
+    void ActiveTexture();
 };

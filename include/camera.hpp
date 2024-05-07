@@ -16,7 +16,7 @@ public:
     glm::vec3 right;
     glm::vec3 up;
     
-    float aspectRatio;
+    // float aspectRatio;
 
     float Yaw;
     float Pitch;
@@ -25,9 +25,9 @@ public:
     float MouseSensitivity;
     float fov;
 
-    Camera(glm::vec3 position, glm::vec3 lookat, glm::vec3 worldUp, float aspectRatio);
+    Camera(glm::vec3 position, glm::vec3 lookat, glm::vec3 worldUp);
     
-    void ProcessKeyboard(GLFWwindow *window);
+    void ProcessKeyboard(GLFWwindow *window, float deltaTime);
     void ProcessMouseMovement(float xoffset, float yoffset);
     void ProcessMouseScroll(float yoffset);
     

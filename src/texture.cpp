@@ -8,8 +8,9 @@
 
 #include <iostream>
 
-Texture::Texture(unsigned int ID, const char* path, TextureType type)
+Texture::Texture(int GL_TEXTURE_IDX, const char* path, TextureType type)
 {
+    this->GL_TEXTURE_IDX = GL_TEXTURE_IDX;
     this->type = type;
     this->path = path;
 
@@ -54,4 +55,9 @@ Texture::Texture(unsigned int ID, const char* path, TextureType type)
 void Texture::Bind()
 {
     glBindTexture(GL_TEXTURE_2D, ID);
+}
+
+void Texture::ActiveTexture()
+{
+    glActiveTexture(GL_TEXTURE_IDX);
 }

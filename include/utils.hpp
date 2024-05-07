@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 #ifdef IMGUI
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -12,12 +13,43 @@
 #include <string>
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+unsigned int SCR_WIDTH = 1400;
+unsigned int SCR_HEIGHT = 800;
 
+
+glm::vec3 getRandVec3(){
+    return glm::vec3(
+        static_cast <float> (rand()) / static_cast <float> (RAND_MAX),
+        static_cast <float> (rand()) / static_cast <float> (RAND_MAX),
+        static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
+    );
+}
+
+glm::vec3* getRandVec3Array(int n, float scale=1.0f){
+    glm::vec3* arr = new glm::vec3[n];
+    for(int i=0; i<n; i++){
+        arr[i] = getRandVec3() * scale;
+    }
+    return arr;
+}
+
+glm::vec3* getUniformVec3Array(int n, float scale=1.0f){
+    glm::vec3* arr = new glm::vec3[n*n*n];
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            for(int k=0; k<n; k++){
+                arr[i*n*n + j*n + k] = glm::vec3(i, j, k) *(scale / n);
+            }
+        }
+    }
+    std::cout << "Uniform array created of size: " << (float)sizeof(glm::vec3) * n*n*n /1024/1024<< " mega asbytes" << std::endl;
+    return arr;
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
     glViewport(0, 0, width, height);
 }
 

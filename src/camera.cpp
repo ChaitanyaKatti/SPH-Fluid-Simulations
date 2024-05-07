@@ -3,8 +3,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+extern unsigned int SCR_WIDTH;
+extern unsigned int SCR_HEIGHT;
 
-Camera::Camera(glm::vec3 position, glm::vec3 lookAt, glm::vec3 worldUp, float aspectRatio)
+Camera::Camera(glm::vec3 position, glm::vec3 lookAt, glm::vec3 worldUp)
 {
     this->position = position;
     this->worldUp = glm::normalize(worldUp);
@@ -14,11 +16,10 @@ Camera::Camera(glm::vec3 position, glm::vec3 lookAt, glm::vec3 worldUp, float as
     this->right = glm::normalize(glm::cross(this->lookAt - this->position, this->worldUp));
     this->up = glm::normalize(glm::cross(right, front));
 
-    this->aspectRatio = aspectRatio;
     this->Yaw = glm::degrees(atan2(front.z, front.x));
     this->Pitch = glm::degrees(asin(front.y));
-    this->MovementSpeed = 0.01f;
-    this->MouseSensitivity = 0.1f;
+    this->MovementSpeed = 5.0f;
+    this->MouseSensitivity = 40.0f;
     this->fov = 75.0f;
 
     updateCameraVectors();
@@ -31,7 +32,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix()
 {
-    return glm::perspective(glm::radians(this->fov), aspectRatio, 0.1f, 100.0f);
+    return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH/(SCR_HEIGHT), 0.1f, 100.0f);
 }
 
 glm::mat4 Camera::GetViewProjectionMatrix()
@@ -39,32 +40,32 @@ glm::mat4 Camera::GetViewProjectionMatrix()
     return GetProjectionMatrix() * GetViewMatrix();
 }
 
-void Camera::ProcessKeyboard(GLFWwindow *window)
+void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
 {   
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        this->position += MovementSpeed * this->front;
+        this->position += deltaTime*MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        this->position -= MovementSpeed * this->front;
+        this->position -= deltaTime*MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        this->position -= MovementSpeed * this->right;
+        this->position -= deltaTime*MovementSpeed * this->right;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        this->position += MovementSpeed * this->right;
+        this->position += deltaTime*MovementSpeed * this->right;
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        this->position += MovementSpeed * this->worldUp;
+        this->position += deltaTime*MovementSpeed * this->worldUp;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        this->position -= MovementSpeed * this->worldUp;
+        this->position -= deltaTime*MovementSpeed * this->worldUp;
     
     this->lookAt = this->position + this->front;
 
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        this->Pitch += 0.05f;
+        this->Pitch += deltaTime * MouseSensitivity;
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        this->Pitch -= 0.05f;
+        this->Pitch -= deltaTime * MouseSensitivity;
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        this->Yaw -= 0.05f;
+        this->Yaw -= deltaTime * MouseSensitivity;
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        this->Yaw += 0.05f;
+        this->Yaw += deltaTime * MouseSensitivity;
     this->Pitch = glm::clamp(this->Pitch, -89.0f, 89.0f);
 
     updateCameraVectors();
