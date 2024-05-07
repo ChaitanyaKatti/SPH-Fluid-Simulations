@@ -1,0 +1,74 @@
+*.pyc
+build/
+dist/
+
+# The canonical out-of-tree build subdirectory
+build
+build-*
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Editor/IDE clutter
+.vs
+.vscode
+*.swp
+_ReSharper*
+*.sdf
+*.suo
+*.dir
+*.vcxproj*
+*.sln
+.vs
+CMakeSettings.json
+Win32
+x64
+Debug
+Release
+MinSizeRel
+RelWithDebInfo
+*.opensdf
+
+# Xcode clutter
+GLFW.build
+GLFW.xcodeproj
+
+# macOS clutter
+.DS_Store
+
+# Makefile generator clutter
+Makefile
+
+# Ninja generator clutter
+build.ninja
+rules.ninja
+.ninja_deps
+.ninja_log
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Misc.
+*.log
+
+# CMake clutter
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+CMakeDoxyfile.in
+CMakeDoxygenDefaults.cmake
+cmake_install.cmake
+cmake_uninstall.cmake
+install_manifest.txt
+*.cmake
+
+# Generated files
+docs/Doxyfile
+docs/html
+docs/warnings.txt
+docs/doxygen_sqlite3.db
