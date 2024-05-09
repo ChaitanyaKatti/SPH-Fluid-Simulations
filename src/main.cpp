@@ -49,13 +49,13 @@ int main()
     // Camera
     Camera camera = Camera(glm::vec3(10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
+    // Instances for LODs
+    const double lod0_fraction = 0.001;
+    const double lod1_fraction = 0.01;
     glm::vec3 *offsets = getUniformVec3Array(NUM_INS_DIM, 10.0f);
     // Sort offsets by distance to camera
     std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
-              { return glm::length(a - camera.position) < glm::length(b - camera.position); });
-
-    const double lod0_fraction = 0.001;
-    const double lod1_fraction = 0.01;
+        { return glm::length(a - camera.position) < glm::length(b - camera.position); });
     ball0.SetInstances((int)(NUM_INS * lod0_fraction), offsets);
     ball1.SetInstances(NUM_INS - (int)(NUM_INS * lod0_fraction), offsets + (int)(NUM_INS * lod0_fraction));
     ball2.SetInstances(NUM_INS - (int)(NUM_INS * lod1_fraction), offsets + (int)(NUM_INS * lod1_fraction));
@@ -67,6 +67,8 @@ int main()
     glCullFace(GL_BACK);
     auto lastFrame = Clock::now();
 
+    // glm::vec3 lastCameraPos = camera.position;
+
     // Render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -76,6 +78,20 @@ int main()
 #endif
         camera.ProcessKeyboard(window, deltaTime);
         processInput(window);
+
+        // Dynamic LOD
+        // if(glm::length(camera.position - lastCameraPos) > 0.1f)
+        // {
+        //     auto sortStartTime = Clock::now();
+        //     lastCameraPos = camera.position;
+        //     std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
+        //             { return glm::length(a - camera.position) < glm::length(b - camera.position); });
+        //     auto sortEndTime = Clock::now();
+        //     std::cout << "Sort time: " << std::chrono::duration<float, std::chrono::milliseconds::period>(sortEndTime - sortStartTime).count() << "ms" << std::endl;
+        //     ball0.SetInstances((int)(NUM_INS * lod0_fraction), offsets);
+        //     ball1.SetInstances(NUM_INS - (int)(NUM_INS * lod0_fraction), offsets + (int)(NUM_INS * lod0_fraction));
+        //     ball2.SetInstances(NUM_INS - (int)(NUM_INS * lod1_fraction), offsets + (int)(NUM_INS * lod1_fraction));
+        // }
 
         // Set the view and projection matrix in the shader
         textureShader.setMat4("viewProjMatrix",
@@ -107,15 +123,15 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        // Measure time
+        // Calculate FPS
         auto currentFrame = Clock::now();
         deltaTime = 0.9 * deltaTime + 0.1 * std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
         lastFrame = currentFrame;
         FPS = 0.9 * FPS + 0.1 / (deltaTime + 0.0001);
-        // print first 2 decimal places
+        // Show FPS
         std::cout << std::fixed;
         std::cout.precision(1);
-        std::cout << "FPS: " << FPS << std::endl;
+        std::cout << "\x1B[2J\x1B[H" << "FPS: " << FPS << std::endl;
     }
 
     // Cleanup
