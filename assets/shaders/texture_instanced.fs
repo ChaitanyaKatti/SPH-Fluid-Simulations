@@ -1,11 +1,12 @@
 #version 330 core
 precision mediump float;
 
-// in vec3 FragPos;
+in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoord;
 
 uniform sampler2D texture0;
+uniform vec3 viewPos;
 
 out vec4 FragColor;
 

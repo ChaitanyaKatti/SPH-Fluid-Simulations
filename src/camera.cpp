@@ -41,7 +41,12 @@ glm::mat4 Camera::GetViewProjectionMatrix()
 }
 
 void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
-{   
+{
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+        this->position = glm::vec3(10.0f);
+        this->Yaw = -135.0f;
+        this->Pitch = -35.3f;
+    }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         this->position += deltaTime*MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -54,7 +59,7 @@ void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
         this->position += deltaTime*MovementSpeed * this->worldUp;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         this->position -= deltaTime*MovementSpeed * this->worldUp;
-    
+
     this->lookAt = this->position + this->front;
 
 

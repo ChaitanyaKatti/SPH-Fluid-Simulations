@@ -26,13 +26,13 @@ Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader) {
     for (size_t i = 0; i < shapes[0].mesh.indices.size(); ++i) {
         idx = shapes[0].mesh.indices[i];
         // Retrieve vertex data using index
-        glm::vec3 vertex(attrib.vertices[3 * idx.vertex_index], 
-                         attrib.vertices[3 * idx.vertex_index + 1], 
+        glm::vec3 vertex(attrib.vertices[3 * idx.vertex_index],
+                         attrib.vertices[3 * idx.vertex_index + 1],
                          attrib.vertices[3 * idx.vertex_index + 2]);
-        glm::vec3 normal(attrib.normals[3 * idx.normal_index], 
-                         attrib.normals[3 * idx.normal_index + 1], 
+        glm::vec3 normal(attrib.normals[3 * idx.normal_index],
+                         attrib.normals[3 * idx.normal_index + 1],
                          attrib.normals[3 * idx.normal_index + 2]);
-        glm::vec2 uv(attrib.texcoords[2 * idx.texcoord_index], 
+        glm::vec2 uv(attrib.texcoords[2 * idx.texcoord_index],
                      attrib.texcoords[2 * idx.texcoord_index + 1]);
 
         // Add to respective vectors
@@ -50,7 +50,7 @@ Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader) {
         vertices.push_back(uv.x);
         vertices.push_back(uv.y);
     }
-    
+
     setupMesh();
 }
 
@@ -63,7 +63,7 @@ void Mesh::setupMesh() {
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-    
+
     // vertex positions
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
@@ -91,7 +91,7 @@ void Mesh::Draw(const glm::mat4 model)
     else{
         shader->setVec3("color", glm::vec3(1.0f));
     }
-    
+
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 8);
     glBindVertexArray(0); // Unbind VAO
@@ -101,14 +101,14 @@ void Mesh::Draw(){
     Draw(this->model);
 }
 
-void Mesh::SetInstances(int n, const glm::vec3* offsets){
-    this->offsets = std::vector<glm::vec3>(offsets, offsets + n);
-    
+void Mesh::SetInstances(int num_instances, const glm::vec3* offsets){
+    this->offsets = std::vector<glm::vec3>(offsets, offsets + num_instances);
+    this->num_instances = num_instances;
     // Generate buffer for offsets
     unsigned int instanceVBO;
     glGenBuffers(1, &instanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferData(GL_ARRAY_BUFFER, n * sizeof(glm::vec3), offsets, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, num_instances * sizeof(glm::vec3), offsets, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Bind VAO
@@ -120,7 +120,7 @@ void Mesh::SetInstances(int n, const glm::vec3* offsets){
     glBindVertexArray(0);
 }
 
-void Mesh::DrawInstanced(const glm::mat4 model, const int n){
+void Mesh::DrawInstances(const glm::mat4 model){
     shader->use();
     shader->setMat4("modelMatrix", model);
     shader->setMat3("normalMatrix", glm::transpose(glm::inverse(glm::mat3(model))));
@@ -131,9 +131,9 @@ void Mesh::DrawInstanced(const glm::mat4 model, const int n){
     else{
         shader->setVec3("color", glm::vec3(1.0f));
     }
-    
+
     glBindVertexArray(VAO);
-    glDrawArraysInstanced(GL_TRIANGLES, 0, vertices.size() / 8, n);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, vertices.size() / 8, this->num_instances);
     glBindVertexArray(0); // Unbind VAO
 }
 

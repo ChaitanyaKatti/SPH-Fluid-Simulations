@@ -19,14 +19,15 @@ private:
     std::vector<glm::vec2> uvs;
     std::vector<float> vertices;
     glm::mat4 model;
+    int num_instances; // number of instances
     std::vector<glm::vec3> offsets; // for instanced rendering
     void setupMesh();
 public:
     Mesh(const char* path, Texture* const texture, Shader* const shader);
     void Draw();
     void Draw(const glm::mat4 model);
-    void SetInstances(int n, const glm::vec3* offset);
-    void DrawInstanced(const glm::mat4 model, const int n);
+    void SetInstances(int num_instances, const glm::vec3* offset);
+    void DrawInstances(const glm::mat4 model);
     void setTexture(Texture* const texture);
     void setShader(Shader* const shader);
     void setModel(const glm::mat4 model);

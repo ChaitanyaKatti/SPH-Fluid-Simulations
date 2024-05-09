@@ -1,4 +1,6 @@
 // #define IMGUI
+#define NUM_INS_DIM 100
+#define NUM_INS NUM_INS_DIM * NUM_INS_DIM * NUM_INS_DIM
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -30,7 +32,7 @@ int main()
     imguiInit(window);
 #endif
 
-    // Build and compile our shader program
+    // Shaders
     Shader textureShader(ASSETS_PATH "shaders/texture_instanced.vs", ASSETS_PATH "shaders/texture.fs");
     Shader colorShader(ASSETS_PATH "shaders/color.vs", ASSETS_PATH "shaders/color.fs");
 
@@ -38,20 +40,33 @@ int main()
     Texture texture0(GL_TEXTURE0, ASSETS_PATH "images/test.png", DIFFUSE);
     textureShader.setInt("texture0", 0);
 
-    Mesh ball = Mesh(ASSETS_PATH "models/icosphere.obj", &texture0, &textureShader);
-    glm::vec3 *offsets = getUniformVec3Array(50, 10.0f);
-    ball.SetInstances(50 * 50 * 50, offsets);
-    free(offsets);
-    // ball.SetInstances(1000, getRandVec3Array(1000, 10.0f));
+    // Mesh
+    Mesh ball0 = Mesh(ASSETS_PATH "models/icosphere1.obj", &texture0, &textureShader);
+    Mesh ball1 = Mesh(ASSETS_PATH "models/icosphere2.obj", &texture0, &textureShader);
+    Mesh ball2 = Mesh(ASSETS_PATH "models/icosphere3.obj", &texture0, &textureShader);
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
 
+    // Camera
     Camera camera = Camera(glm::vec3(10.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glm::vec3 *offsets = getUniformVec3Array(NUM_INS_DIM, 10.0f);
+    // Sort offsets by distance to camera
+    std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
+              { return glm::length(a - camera.position) < glm::length(b - camera.position); });
+
+    const double lod0_fraction = 0.001;
+    const double lod1_fraction = 0.01;
+    ball0.SetInstances((int)(NUM_INS * lod0_fraction), offsets);
+    ball1.SetInstances(NUM_INS - (int)(NUM_INS * lod0_fraction), offsets + (int)(NUM_INS * lod0_fraction));
+    ball2.SetInstances(NUM_INS - (int)(NUM_INS * lod1_fraction), offsets + (int)(NUM_INS * lod1_fraction));
+    free(offsets);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     auto lastFrame = Clock::now();
+
     // Render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -65,6 +80,8 @@ int main()
         // Set the view and projection matrix in the shader
         textureShader.setMat4("viewProjMatrix",
                               camera.GetViewProjectionMatrix());
+        textureShader.setVec3("viewPos",
+                              camera.position);
         colorShader.setMat4("viewProjMatrix",
                             camera.GetViewProjectionMatrix());
 
@@ -75,7 +92,9 @@ int main()
 
         glEnable(GL_CULL_FACE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        ball.DrawInstanced(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.02f)), (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f)), 50 * 50 * 50);
+        ball0.DrawInstances(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.02f)), (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f)));
+        ball1.DrawInstances(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.02f)), (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f)));
+        ball2.DrawInstances(glm::rotate(glm::scale(glm::mat4(1.0f), glm::vec3(0.04f)), (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f)));
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glLineWidth(2.0f);
@@ -90,10 +109,13 @@ int main()
 
         // Measure time
         auto currentFrame = Clock::now();
-        deltaTime = 0.99*deltaTime + 0.01*std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
+        deltaTime = 0.9 * deltaTime + 0.1 * std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
         lastFrame = currentFrame;
-        FPS = 0.9*FPS + 0.1/(deltaTime + 0.0001);
-        std::cout << "FPS: " << int(FPS) << std::endl;
+        FPS = 0.9 * FPS + 0.1 / (deltaTime + 0.0001);
+        // print first 2 decimal places
+        std::cout << std::fixed;
+        std::cout.precision(1);
+        std::cout << "FPS: " << FPS << std::endl;
     }
 
     // Cleanup
