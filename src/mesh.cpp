@@ -153,17 +153,25 @@ glm::mat4 Mesh::getModel(){
 
 
 // POINTS
-Points::Points(glm::vec3* const positions, int num_points, Shader* const shader){
+Points::Points(glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader){
     this->positions = positions;
+    this->colors = colors;
     this->num_points = num_points;
     this->shader = shader;
     this->modelMatrix = glm::mat4(1.0f);
     setupPoints();
 }
 
-void Points::UpdatePositions(glm::vec3* const positions, int num_points){
+void Points::UpdateData(glm::vec3* positions, glm::vec3* colors, int num_points){
     this->positions = positions;
-    setupPoints();
+    this->colors = colors;
+    this->num_points = num_points;
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, num_points * sizeof(glm::vec3), positions);
+    glBufferSubData(GL_ARRAY_BUFFER, num_points * sizeof(glm::vec3), num_points * sizeof(glm::vec3), colors);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 }
 
 void Points::setupPoints(){
@@ -172,10 +180,15 @@ void Points::setupPoints(){
 
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, num_points * sizeof(glm::vec3), positions, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, num_points * sizeof(glm::vec3) * 2, nullptr, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, num_points * sizeof(glm::vec3), positions);
+    glBufferSubData(GL_ARRAY_BUFFER, num_points * sizeof(glm::vec3), num_points * sizeof(glm::vec3), colors);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)(num_points * sizeof(glm::vec3)));
+    glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
 }

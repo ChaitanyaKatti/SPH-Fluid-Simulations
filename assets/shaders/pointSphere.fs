@@ -2,6 +2,7 @@
 precision highp float;
 #define PI 3.1415926535897932384626433832795
 
+in vec3 color;
 in vec3 lookdir;
 
 uniform float uTime;
@@ -27,5 +28,5 @@ void main() {
     shade += 0.2*pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
     shade += 0.1;
     
-    gl_FragColor = vec4(vec3(shade),  1.0);
+    gl_FragColor = vec4(color*shade,  1.0);
 }

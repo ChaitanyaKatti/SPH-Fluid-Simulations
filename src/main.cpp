@@ -47,15 +47,20 @@ int main()
     Camera camera = Camera(glm::vec3(12.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Instances for LODs
-    glm::vec3 *offsets = getUniformVec3Array(NUM_INS_DIM, 10.0f);
-    // Sort offsets by distance to camera
-    // std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
+    glm::vec3 *positions = new glm::vec3[NUM_INS];
+    glm::vec3 *colors = new glm::vec3[NUM_INS];
+    // genRandVec3Array(positions, NUM_INS, 10.0f);
+    // genRandVec3Array(colors, NUM_INS, 10.0f);
+    genUniformVec3Array(positions, NUM_INS_DIM , 10.0f);
+    genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
+    // glm::vec3 *positions = genUniformVec3Array(NUM_INS_DIM, 10.0f);
+    // Sort positions by distance to camera
+    // std::sort(positions, positions + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
     
     // Meshes and Points
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Points points(offsets, NUM_INS, &pointSphereShader);
-    free(offsets);
+    Points points(positions, colors, NUM_INS, &pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
@@ -75,6 +80,9 @@ int main()
 #ifdef IMGUI
         imguiNewFrame();
 #endif
+        applyVectorField(positions, colors, NUM_INS, 0.005f);
+        // points.UpdateData(positions, colors, NUM_INS);
+
         camera.ProcessKeyboard(window, deltaTime);
         processInput(window);
 
@@ -93,7 +101,7 @@ int main()
         pointSphereShader.setFloat("uTime", glfwGetTime());
 
         // Render
-        glClearColor(0.1f, 0.1f, 0.2f, 0.0f);
+        glClearColor(0.9f, 0.9f, 0.8f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -128,9 +136,13 @@ int main()
     }
 
     // Cleanup
+    free(positions);
     textureShader.~Shader();
     colorShader.~Shader();
     pointSpriteShader.~Shader();
+    pointSphereShader.~Shader();
+    cube.~Mesh();
+    points.~Points();
     texture0.~Texture();
 #ifdef IMGUI
     imguiDestroy();

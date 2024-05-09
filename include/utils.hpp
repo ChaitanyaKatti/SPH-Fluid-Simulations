@@ -16,40 +16,61 @@
 unsigned int SCR_WIDTH = 1400;
 unsigned int SCR_HEIGHT = 800;
 
-
-glm::vec3 getRandVec3(){
+glm::vec3 getRandVec3()
+{
     return glm::vec3(
-        static_cast <float> (rand()) / static_cast <float> (RAND_MAX),
-        static_cast <float> (rand()) / static_cast <float> (RAND_MAX),
-        static_cast <float> (rand()) / static_cast <float> (RAND_MAX)
-    );
+        static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
+        static_cast<float>(rand()) / static_cast<float>(RAND_MAX),
+        static_cast<float>(rand()) / static_cast<float>(RAND_MAX));
 }
 
-glm::vec3* getRandVec3Array(int n, float scale=1.0f){
-    glm::vec3* arr = new glm::vec3[n];
-    for(int i=0; i<n; i++){
+void genRandVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
+{
+    for (int i = 0; i < n; i++)
+    {
         arr[i] = getRandVec3() * scale;
     }
-    return arr;
 }
 
-glm::vec3* getUniformVec3Array(int n, float scale=1.0f){
-    if(n <= 0){
-        return nullptr;
+glm::vec3 vectorField(glm::vec3 p)
+{
+    // Lorenz attractor
+    return glm::vec3(10.0f * (p.z - p.x),
+                     (p.x * p.z - 8.0f / 3.0f * p.y),
+                     (p.x * (28.0f - p.y) - p.z));
+}
+
+void applyVectorField(glm::vec3 *positions, glm::vec3 *colors, int n, float scale = 1.0f)
+{
+    for (int i = 0; i < n; i++)
+    {
+        glm::vec3 vel = vectorField(positions[i]) * scale;
+        positions[i] += vel;
+        float speed = glm::length(vel);
+        colors[i] = glm::vec3(speed, 0.0, 1.0 - speed);
     }
-    glm::vec3* arr = new glm::vec3[n*n*n];
-    for(int i=0; i<n; i++){
-        for(int j=0; j<n; j++){
-            for(int k=0; k<n; k++){
-                arr[i*n*n + j*n + k] = glm::vec3(i, j, k) *(scale / (n-1));
+}
+
+void genUniformVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
+{
+    if (n <= 0)
+    {
+        return;
+    }
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            for (int k = 0; k < n; k++)
+            {
+                arr[i * n * n + j * n + k] = glm::vec3(i, j, k) * (scale / (n - 1));
             }
         }
     }
-    std::cout << "Uniform array created of size: " << (float)sizeof(glm::vec3) * n*n*n /1024/1024<< " Mbs" << std::endl;
-    return arr;
+    std::cout << "Uniform array created of size: " << (float)sizeof(glm::vec3) * n * n * n / 1024 / 1024 << " Mbs" << std::endl;
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     SCR_WIDTH = width;
     SCR_HEIGHT = height;
@@ -61,11 +82,13 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 #ifdef IMGUI
-    else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
+    else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+    {
         ImGui::SetNextWindowCollapsed(true);
     }
-    else if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE){
-        ImGui::SetNextWindowCollapsed(false);        
+    else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
+    {
+        ImGui::SetNextWindowCollapsed(false);
     }
 #endif
 }
@@ -103,32 +126,36 @@ GLFWwindow *initWindow()
 }
 
 #ifdef IMGUI
-void imguiInit(GLFWwindow* window){
+void imguiInit(GLFWwindow *window)
+{
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplGlfw_InitForOpenGL(window, true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
 }
 
-void imguiNewFrame(){
+void imguiNewFrame()
+{
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
 }
 
-void imguiRender(){
+void imguiRender()
+{
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void imguiDestroy(){
+void imguiDestroy()
+{
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

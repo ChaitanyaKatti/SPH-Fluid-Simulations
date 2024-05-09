@@ -41,14 +41,15 @@ private:
     unsigned int VAO, VBO;
     Shader* shader;
     glm::vec3 *positions;
+    glm::vec3 *colors;
     int num_points;
     glm::mat4 modelMatrix;
     void setupPoints();
 public:
-    Points(glm::vec3* const positions, int num_points, Shader* const shader); 
+    Points(glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader); 
     void Draw();
     void Draw(const glm::mat4 modelMatrix);
     void setShader(Shader* const shader);
     void setModel(const glm::mat4 model);
-    void UpdatePositions(glm::vec3* const positions, int num_points);
+    void UpdateData(glm::vec3* positions, glm::vec3* colors, int num_points);
 };
