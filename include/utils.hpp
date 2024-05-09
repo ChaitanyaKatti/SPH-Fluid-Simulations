@@ -34,15 +34,18 @@ glm::vec3* getRandVec3Array(int n, float scale=1.0f){
 }
 
 glm::vec3* getUniformVec3Array(int n, float scale=1.0f){
+    if(n <= 0){
+        return nullptr;
+    }
     glm::vec3* arr = new glm::vec3[n*n*n];
     for(int i=0; i<n; i++){
         for(int j=0; j<n; j++){
             for(int k=0; k<n; k++){
-                arr[i*n*n + j*n + k] = glm::vec3(i, j, k) *(scale / n);
+                arr[i*n*n + j*n + k] = glm::vec3(i, j, k) *(scale / (n-1));
             }
         }
     }
-    std::cout << "Uniform array created of size: " << (float)sizeof(glm::vec3) * n*n*n /1024/1024<< " mega asbytes" << std::endl;
+    std::cout << "Uniform array created of size: " << (float)sizeof(glm::vec3) * n*n*n /1024/1024<< " Mbs" << std::endl;
     return arr;
 }
 
@@ -73,6 +76,8 @@ GLFWwindow *initWindow()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    // glfwWindowHint(GLFW_DECORATED, GL_FALSE);
     GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "More Triangles", NULL, NULL);
     if (window == NULL)
     {
@@ -89,7 +94,11 @@ GLFWwindow *initWindow()
         std::cout << "Failed to initialize GLAD" << std::endl;
         return nullptr;
     }
-
+    // Set window position to center
+    const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    int posX = (mode->width - SCR_WIDTH) / 2;
+    int posY = (mode->height - SCR_HEIGHT) / 2;
+    glfwSetWindowPos(window, posX, posY);
     return window;
 }
 

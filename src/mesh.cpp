@@ -6,6 +6,7 @@
 #include <tiny_obj_loader.h>
 #include <iostream>
 
+// MESH
 Mesh::Mesh(const char* path, Texture* const texture, Shader* const shader) {
     this->path = path;
     this->texture = texture;
@@ -88,9 +89,6 @@ void Mesh::Draw(const glm::mat4 model)
     {
         texture->Bind();
     }
-    else{
-        shader->setVec3("color", glm::vec3(1.0f));
-    }
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 8);
@@ -151,4 +149,48 @@ void Mesh::setModel(const glm::mat4 model){
 
 glm::mat4 Mesh::getModel(){
     return model;
+}
+
+
+// POINTS
+Points::Points(glm::vec3* const positions, int num_points, Shader* const shader){
+    this->positions = positions;
+    this->num_points = num_points;
+    this->shader = shader;
+    this->modelMatrix = glm::mat4(1.0f);
+    setupPoints();
+}
+
+void Points::setupPoints(){
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, num_points * sizeof(glm::vec3), positions, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+}
+
+void Points::Draw(const glm::mat4 modelMatrix){
+    shader->use();
+    shader->setMat4("modelMatrix", modelMatrix);
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_POINTS, 0, num_points);
+    glBindVertexArray(0);
+}
+
+void Points::Draw(){
+    Draw(this->modelMatrix);
+}
+
+void Points::setShader(Shader* const shader){
+    this->shader = shader;
+}
+
+void Points::setModel(const glm::mat4 model){
+    this->modelMatrix = model;
 }
