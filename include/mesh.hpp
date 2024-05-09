@@ -50,4 +50,5 @@ public:
     void Draw(const glm::mat4 modelMatrix);
     void setShader(Shader* const shader);
     void setModel(const glm::mat4 model);
+    void UpdatePositions(glm::vec3* const positions, int num_points);
 };

@@ -1,5 +1,5 @@
 // #define IMGUI
-#define NUM_INS_DIM 3
+#define NUM_INS_DIM 100
 #define NUM_INS NUM_INS_DIM *NUM_INS_DIM *NUM_INS_DIM
 
 #include <glad/glad.h>
@@ -35,13 +35,13 @@ int main()
     // Shaders
     Shader textureShader(ASSETS_PATH "shaders/texture_instanced.vs", ASSETS_PATH "shaders/texture.fs");
     Shader colorShader(ASSETS_PATH "shaders/color.vs", ASSETS_PATH "shaders/color.fs");
-    Shader pointShader(ASSETS_PATH "shaders/pointSprite.vs", ASSETS_PATH "shaders/pointSprite.fs");
+    Shader pointSpriteShader(ASSETS_PATH "shaders/pointSprite.vs", ASSETS_PATH "shaders/pointSprite.fs");
+    Shader pointSphereShader(ASSETS_PATH "shaders/pointSphere.vs", ASSETS_PATH "shaders/pointSphere.fs");
+    
     // Texture
     Texture texture0(GL_TEXTURE0, ASSETS_PATH "images/earth.jpg", DIFFUSE);
     textureShader.setInt("texture0", 0);
-    pointShader.setInt("texture0", 0);
-
-    Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
+    pointSpriteShader.setInt("texture0", 0);
 
     // Camera
     Camera camera = Camera(glm::vec3(12.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -49,9 +49,12 @@ int main()
     // Instances for LODs
     glm::vec3 *offsets = getUniformVec3Array(NUM_INS_DIM, 10.0f);
     // Sort offsets by distance to camera
-    std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
-              { return glm::length(a - camera.position) > glm::length(b - camera.position); });
-    Points points(offsets, NUM_INS, &pointShader);
+    // std::sort(offsets, offsets + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
+    //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
+    
+    // Meshes and Points
+    Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
+    Points points(offsets, NUM_INS, &pointSphereShader);
     free(offsets);
 
     // OpenGL state
@@ -60,11 +63,10 @@ int main()
     glCullFace(GL_BACK);
     glEnable(GL_PROGRAM_POINT_SIZE);
     glPointSize(1.0f);
+    glLineWidth(2.0f);
     glEnable(GL_MULTISAMPLE);
 
     auto lastFrame = Clock::now();
-
-    // glm::vec3 lastCameraPos = camera.position;
 
     // Render loop
     while (!glfwWindowShouldClose(window))
@@ -81,10 +83,14 @@ int main()
         textureShader.setVec3("viewPos", camera.position);
         colorShader.setMat4("viewProjMatrix", camera.GetViewProjectionMatrix());
         colorShader.setVec3("color", glm::vec3(1.0f, 0.0f, 1.0f));
-        pointShader.setMat4("viewMatrix", camera.GetViewMatrix());
-        pointShader.setMat4("projMatrix", camera.GetProjectionMatrix());
-        pointShader.setVec3("eyePos", camera.position);
-        pointShader.setFloat("uTime", glfwGetTime());
+        pointSpriteShader.setMat4("viewMatrix", camera.GetViewMatrix());
+        pointSpriteShader.setMat4("projMatrix", camera.GetProjectionMatrix());
+        pointSpriteShader.setVec3("eyePos", camera.position);
+        pointSpriteShader.setFloat("uTime", glfwGetTime());
+        pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
+        pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
+        pointSphereShader.setVec3("eyePos", camera.position);
+        pointSphereShader.setFloat("uTime", glfwGetTime());
 
         // Render
         glClearColor(0.1f, 0.1f, 0.2f, 0.0f);
@@ -96,7 +102,7 @@ int main()
 
         // Draw Cube
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glLineWidth(2.0f);
+        glDisable(GL_CULL_FACE);
         cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5)));
 
         // Draw Points
@@ -118,13 +124,13 @@ int main()
         // Show FPS
         std::cout << std::fixed;
         std::cout.precision(1);
-        // std::cout << "\x1B[2J\x1B[H" << "FPS: " << FPS << std::endl;
+        std::cout << "\x1B[2J\x1B[H" << "FPS: " << FPS << std::endl;
     }
 
     // Cleanup
     textureShader.~Shader();
     colorShader.~Shader();
-    pointShader.~Shader();
+    pointSpriteShader.~Shader();
     texture0.~Texture();
 #ifdef IMGUI
     imguiDestroy();

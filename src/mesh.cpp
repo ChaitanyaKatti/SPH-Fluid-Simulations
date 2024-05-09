@@ -161,6 +161,11 @@ Points::Points(glm::vec3* const positions, int num_points, Shader* const shader)
     setupPoints();
 }
 
+void Points::UpdatePositions(glm::vec3* const positions, int num_points){
+    this->positions = positions;
+    setupPoints();
+}
+
 void Points::setupPoints(){
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
