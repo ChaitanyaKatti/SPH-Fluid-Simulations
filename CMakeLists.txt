@@ -68,7 +68,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS} ${IMGUI_SOU
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL)
 
-# Include directories
+# External include directories
 target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjloader include)
 
 # Set output directories

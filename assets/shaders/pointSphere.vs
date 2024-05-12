@@ -16,10 +16,9 @@ out vec3 lookdir;
 void main()
 {
     color = aColor;
+    lookdir = normalize(aPos - eyePos);
+
     vec4 pos = viewMatrix * modelMatrix * vec4(aPos, 1.0);
     gl_Position = projMatrix * pos;
     gl_PointSize = -50.0 / pos.z;
-
-    // Calculate the yaw and pitch made by line joining the eye position and the vertex
-    lookdir = normalize(aPos - eyePos);
 }

@@ -23,6 +23,7 @@ double deltaTime = 0.0f;
 
 int main()
 {
+    std::cout << "Hello, World!" << std::endl;
     GLFWwindow *window = initWindow();
     if (window == NULL)
     {
@@ -50,10 +51,9 @@ int main()
     glm::vec3 *positions = new glm::vec3[NUM_INS];
     glm::vec3 *colors = new glm::vec3[NUM_INS];
     // genRandVec3Array(positions, NUM_INS, 10.0f);
-    // genRandVec3Array(colors, NUM_INS, 10.0f);
+    // genRandVec3Array(colors, NUM_INS, 1.0f);
     genUniformVec3Array(positions, NUM_INS_DIM , 10.0f);
     genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
-    // glm::vec3 *positions = genUniformVec3Array(NUM_INS_DIM, 10.0f);
     // Sort positions by distance to camera
     // std::sort(positions, positions + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
@@ -80,7 +80,7 @@ int main()
 #ifdef IMGUI
         imguiNewFrame();
 #endif
-        applyVectorField(positions, colors, NUM_INS, 0.005f);
+        // applyVectorField(positions, colors, NUM_INS, 0.005f);
         // points.UpdateData(positions, colors, NUM_INS);
 
         camera.ProcessKeyboard(window, deltaTime);
@@ -116,7 +116,6 @@ int main()
         // Draw Points
         points.Draw();
 
-
         // Swap buffers and poll IO events
 #ifdef IMGUI
         imguiRender();
@@ -136,13 +135,13 @@ int main()
     }
 
     // Cleanup
-    free(positions);
+    delete[] positions;
+    delete[] colors;
     textureShader.~Shader();
     colorShader.~Shader();
     pointSpriteShader.~Shader();
     pointSphereShader.~Shader();
     cube.~Mesh();
-    points.~Points();
     texture0.~Texture();
 #ifdef IMGUI
     imguiDestroy();
