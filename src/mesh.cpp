@@ -153,7 +153,8 @@ glm::mat4 Mesh::getModel(){
 
 
 // POINTS
-Points::Points(glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader){
+Points::Points(const float pointSize, glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader){
+    this->pointSize = pointSize;
     this->positions = positions;
     this->colors = colors;
     this->num_points = num_points;
@@ -196,6 +197,7 @@ void Points::setupPoints(){
 void Points::Draw(const glm::mat4 modelMatrix){
     shader->use();
     shader->setMat4("modelMatrix", modelMatrix);
+    shader->setFloat("pointSize", pointSize);
     glBindVertexArray(VAO);
     glDrawArrays(GL_POINTS, 0, num_points);
     glBindVertexArray(0);

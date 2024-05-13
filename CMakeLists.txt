@@ -1,11 +1,11 @@
 set(CMAKE_WARN_DEPRECATED OFF)
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.9)
 project(SPH-Fluid-Simulation)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -Wextra")
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
@@ -56,6 +56,12 @@ if(NOT OPENGL_FOUND)
     message(ERROR "OpenGL not found")
 endif()
 
+# Find OMP
+find_package(OpenMP REQUIRED)
+if(NOT OpenMP_CXX_FOUND)
+    message(ERROR "OpenMP not found")
+endif()
+
 # Add source files
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp")
 
@@ -66,7 +72,7 @@ file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/i
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS} ${IMGUI_SOURCES})
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL)
+target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL OpenMP::OpenMP_CXX)
 
 # External include directories
 target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjloader include)

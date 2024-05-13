@@ -15,6 +15,7 @@
 // settings
 unsigned int SCR_WIDTH = 1400;
 unsigned int SCR_HEIGHT = 800;
+float vectorFieldScale = 0.005f;
 
 glm::vec3 getRandVec3()
 {
@@ -32,7 +33,7 @@ void genRandVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
     }
 }
 
-glm::vec3 vectorField(glm::vec3 p)
+inline glm::vec3 vectorField(glm::vec3 p)
 {
     // Lorenz attractor
     return glm::vec3(10.0f * (p.z - p.x),
@@ -40,13 +41,14 @@ glm::vec3 vectorField(glm::vec3 p)
                      (p.x * (28.0f - p.y) - p.z));
 }
 
-void applyVectorField(glm::vec3 *positions, glm::vec3 *colors, int n, float scale = 1.0f)
+void applyVectorField(glm::vec3 *positions, glm::vec3 *colors, int n)
 {
+#pragma omp parallel for
     for (int i = 0; i < n; i++)
     {
-        glm::vec3 vel = vectorField(positions[i]) * scale;
-        positions[i] += vel;
-        float speed = glm::length(vel);
+        glm::vec3 vel = vectorField(positions[i]);
+        positions[i] += vel * vectorFieldScale;
+        float speed = glm::length(vel) / 50.0f;
         colors[i] = glm::vec3(speed, 0.0, 1.0 - speed);
     }
 }
@@ -81,6 +83,14 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
+        vectorFieldScale *= 1.1f;
+        vectorFieldScale = std::min(vectorFieldScale, 0.01f);
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS){
+        vectorFieldScale *= 0.9f;
+        vectorFieldScale = std::max(vectorFieldScale, 0.0001f);
+    }
 #ifdef IMGUI
     else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
     {
@@ -110,7 +120,7 @@ GLFWwindow *initWindow()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
+    glfwSwapInterval(0); // Enable vsync
     // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {

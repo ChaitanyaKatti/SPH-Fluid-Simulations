@@ -1,5 +1,5 @@
 // #define IMGUI
-#define NUM_INS_DIM 100
+#define NUM_INS_DIM 50
 #define NUM_INS NUM_INS_DIM *NUM_INS_DIM *NUM_INS_DIM
 
 #include <glad/glad.h>
@@ -21,9 +21,10 @@ extern unsigned int SCR_HEIGHT;
 double FPS = 60.0f;
 double deltaTime = 0.0f;
 
+
 int main()
 {
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Hello!" << std::endl;
     GLFWwindow *window = initWindow();
     if (window == NULL)
     {
@@ -34,15 +35,11 @@ int main()
 #endif
 
     // Shaders
-    Shader textureShader(ASSETS_PATH "shaders/texture_instanced.vs", ASSETS_PATH "shaders/texture.fs");
-    Shader colorShader(ASSETS_PATH "shaders/color.vs", ASSETS_PATH "shaders/color.fs");
-    Shader pointSpriteShader(ASSETS_PATH "shaders/pointSprite.vs", ASSETS_PATH "shaders/pointSprite.fs");
-    Shader pointSphereShader(ASSETS_PATH "shaders/pointSphere.vs", ASSETS_PATH "shaders/pointSphere.fs");
-    
-    // Texture
-    Texture texture0(GL_TEXTURE0, ASSETS_PATH "images/earth.jpg", DIFFUSE);
-    textureShader.setInt("texture0", 0);
-    pointSpriteShader.setInt("texture0", 0);
+    Shader colorShader(ASSETS_PATH "shaders/color/color.vs", 
+                       ASSETS_PATH "shaders/color/color.fs");
+    Shader pointSphereShader(ASSETS_PATH "shaders/geometryPoint/pointSphere.vs", 
+                             ASSETS_PATH "shaders/geometryPoint/pointSphere.fs", 
+                             ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
 
     // Camera
     Camera camera = Camera(glm::vec3(12.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -50,27 +47,27 @@ int main()
     // Instances for LODs
     glm::vec3 *positions = new glm::vec3[NUM_INS];
     glm::vec3 *colors = new glm::vec3[NUM_INS];
-    // genRandVec3Array(positions, NUM_INS, 10.0f);
-    // genRandVec3Array(colors, NUM_INS, 1.0f);
-    genUniformVec3Array(positions, NUM_INS_DIM , 10.0f);
-    genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
+    genRandVec3Array(positions, NUM_INS, 10.0f);
+    genRandVec3Array(colors, NUM_INS, 1.0f);
+    // genUniformVec3Array(positions, NUM_INS_DIM , 10.0f);
+    // genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
     // Sort positions by distance to camera
     // std::sort(positions, positions + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
-    
+    // std::sort(colors, colors + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
+    //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
     // Meshes and Points
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Points points(positions, colors, NUM_INS, &pointSphereShader);
+    Points points(0.05, positions, colors, NUM_INS, &pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
     glEnable(GL_PROGRAM_POINT_SIZE);
     glPointSize(1.0f);
     glLineWidth(2.0f);
     glEnable(GL_MULTISAMPLE);
-
     auto lastFrame = Clock::now();
 
     // Render loop
@@ -80,21 +77,17 @@ int main()
 #ifdef IMGUI
         imguiNewFrame();
 #endif
-        // applyVectorField(positions, colors, NUM_INS, 0.005f);
-        // points.UpdateData(positions, colors, NUM_INS);
+        applyVectorField(positions, colors, NUM_INS);
+        points.UpdateData(positions, colors, NUM_INS);
 
+        // Input
         camera.ProcessKeyboard(window, deltaTime);
         processInput(window);
 
         // Set the view and projection matrix in the shader
-        textureShader.setMat4("viewProjMatrix", camera.GetViewProjectionMatrix());
-        textureShader.setVec3("viewPos", camera.position);
         colorShader.setMat4("viewProjMatrix", camera.GetViewProjectionMatrix());
         colorShader.setVec3("color", glm::vec3(1.0f, 0.0f, 1.0f));
-        pointSpriteShader.setMat4("viewMatrix", camera.GetViewMatrix());
-        pointSpriteShader.setMat4("projMatrix", camera.GetProjectionMatrix());
-        pointSpriteShader.setVec3("eyePos", camera.position);
-        pointSpriteShader.setFloat("uTime", glfwGetTime());
+
         pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
         pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
         pointSphereShader.setVec3("eyePos", camera.position);
@@ -105,16 +98,15 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        // glEnable(GL_CULL_FACE);
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // Draw Points
+        glEnable(GL_CULL_FACE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        points.Draw();
 
         // Draw Cube
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDisable(GL_CULL_FACE);
         cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5)));
-
-        // Draw Points
-        points.Draw();
 
         // Swap buffers and poll IO events
 #ifdef IMGUI
@@ -131,18 +123,14 @@ int main()
         // Show FPS
         std::cout << std::fixed;
         std::cout.precision(1);
-        std::cout << "\x1B[2J\x1B[H" << "FPS: " << FPS << std::endl;
+        std::cout << "\x1b[1;31mFPS: " << FPS << "\x1b[0m" << std::endl;
     }
-
     // Cleanup
     delete[] positions;
     delete[] colors;
-    textureShader.~Shader();
     colorShader.~Shader();
-    pointSpriteShader.~Shader();
     pointSphereShader.~Shader();
     cube.~Mesh();
-    texture0.~Texture();
 #ifdef IMGUI
     imguiDestroy();
 #endif
