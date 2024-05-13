@@ -8,12 +8,12 @@
 #include <iostream>
 #include <chrono>
 
-#include <utils.hpp>
 #include <shader.hpp>
 #include <texture.hpp>
 #include <mesh.hpp>
 #include <particles.hpp>
 #include <camera.hpp>
+#include <utils.hpp>
 
 typedef std::chrono::high_resolution_clock Clock;
 extern unsigned int SCR_WIDTH;
@@ -82,9 +82,9 @@ int main()
             genUniformVec3Array(positions, NUM_INS_DIM , 7.0f);
             particles.setPositions(positions);
         }
-        if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
+        // if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
+        // }
             particles.update();
-        }
 
         // Input
         camera.ProcessKeyboard(window, deltaTime);

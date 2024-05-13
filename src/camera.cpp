@@ -32,7 +32,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix()
 {
-    return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH/(SCR_HEIGHT), 0.1f, 100.0f);
+    return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH/(SCR_HEIGHT), 1.0f, 40.0f);
 }
 
 glm::mat4 Camera::GetViewProjectionMatrix()
@@ -42,11 +42,11 @@ glm::mat4 Camera::GetViewProjectionMatrix()
 
 void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
 {
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-        this->position = glm::vec3(10.0f);
-        this->Yaw = -135.0f;
-        this->Pitch = -35.3f;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+    //     this->position = glm::vec3(10.0f);
+    //     this->Yaw = -135.0f;
+    //     this->Pitch = -35.3f;
+    // }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         this->position += deltaTime*MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

@@ -31,10 +31,12 @@ void main() {
     shade += 0.2 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
     shade += 0.3;
     fragColor = vec4(fColor*shade,  1.0);
-    // fragColor = vec4(fColor,  1.0);
     
-    // Write depth to depth buffer
-    vec4 NCD = projMatrix * viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);
-    float depth = (1 + NCD.z / NCD.w) / 2;
+    // Write depth to depth buffer by calulating Normalized Device Coordinates
+    vec4 NDC = projMatrix * viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);
+    float depth = (1 + NDC.z / NDC.w) / 2; // NDC.z is in range [-NDC.w, NDC.w], so we normalize it to [0, 1]
     gl_FragDepth = depth;
+    
+    // fragColor = vec4(vec2(modelNormal), 1.0, 1.0); // Visualize world space normal
+    // fragColor = vec4(vec3(depth), 1.0, 1.0); // Visualize world space normal
 }

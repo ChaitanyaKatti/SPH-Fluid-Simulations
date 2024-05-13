@@ -26,9 +26,7 @@ private:
     glm::vec3 *forces;
 
     void setupParticles();
-    void calculateDensity();
-    void calculatePressure();
-    void calculateForces();
+    void calculateDensityAndPressure();
     void applyForces();
 
 public:
