@@ -1,5 +1,5 @@
 // #define IMGUI
-#define NUM_INS_DIM 50
+#define NUM_INS_DIM 10
 #define NUM_INS NUM_INS_DIM *NUM_INS_DIM *NUM_INS_DIM
 
 #include <glad/glad.h>
@@ -12,6 +12,7 @@
 #include <shader.hpp>
 #include <texture.hpp>
 #include <mesh.hpp>
+#include <particles.hpp>
 #include <camera.hpp>
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -42,23 +43,23 @@ int main()
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
 
     // Camera
-    Camera camera = Camera(glm::vec3(12.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera camera = Camera(glm::vec3(16.0f, 9.0f, 9.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Instances for LODs
     glm::vec3 *positions = new glm::vec3[NUM_INS];
     glm::vec3 *colors = new glm::vec3[NUM_INS];
-    genRandVec3Array(positions, NUM_INS, 10.0f);
-    genRandVec3Array(colors, NUM_INS, 1.0f);
-    // genUniformVec3Array(positions, NUM_INS_DIM , 10.0f);
-    // genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
+    // genRandVec3Array(positions, NUM_INS, 10.0f);
+    // genRandVec3Array(colors, NUM_INS, 1.0f);
+    genUniformVec3Array(positions, NUM_INS_DIM , 7.0f);
+    genUniformVec3Array(colors, NUM_INS_DIM , 1.0f);
     // Sort positions by distance to camera
     // std::sort(positions, positions + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
     // std::sort(colors, colors + NUM_INS, [&camera](glm::vec3 a, glm::vec3 b)
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
-    // Meshes and Points
+    // Meshes and Particles
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Points points(0.05, positions, colors, NUM_INS, &pointSphereShader);
+    Particles particles(1.0f, NUM_INS/(7*7*7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
@@ -77,8 +78,9 @@ int main()
 #ifdef IMGUI
         imguiNewFrame();
 #endif
-        applyVectorField(positions, colors, NUM_INS);
-        points.UpdateData(positions, colors, NUM_INS);
+        if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
+            particles.update();
+        }
 
         // Input
         camera.ProcessKeyboard(window, deltaTime);
@@ -98,10 +100,10 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        // Draw Points
+        // Draw Particles
         glEnable(GL_CULL_FACE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        points.Draw();
+        particles.Draw();
 
         // Draw Cube
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -123,14 +125,12 @@ int main()
         // Show FPS
         std::cout << std::fixed;
         std::cout.precision(1);
-        std::cout << "\x1b[1;31mFPS: " << FPS << "\x1b[0m" << std::endl;
+        std::cout << "\x1b[1;31m" << "FPS: " << FPS << "\r\x1b[0m";
     }
+
     // Cleanup
     delete[] positions;
     delete[] colors;
-    colorShader.~Shader();
-    pointSphereShader.~Shader();
-    cube.~Mesh();
 #ifdef IMGUI
     imguiDestroy();
 #endif

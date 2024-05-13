@@ -35,22 +35,3 @@ public:
 };
 
 
-class Points
-{
-private:
-    unsigned int VAO, VBO;
-    float pointSize;
-    Shader* shader;
-    glm::vec3 *positions;
-    glm::vec3 *colors;
-    int num_points;
-    glm::mat4 modelMatrix;
-    void setupPoints();
-public:
-    Points(const float pointSize, glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader); 
-    void Draw();
-    void Draw(const glm::mat4 modelMatrix);
-    void setShader(Shader* const shader);
-    void setModel(const glm::mat4 model);
-    void UpdateData(glm::vec3* positions, glm::vec3* colors, int num_points);
-};

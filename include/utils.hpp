@@ -65,7 +65,7 @@ void genUniformVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
         {
             for (int k = 0; k < n; k++)
             {
-                arr[i * n * n + j * n + k] = glm::vec3(i, j, k) * (scale / (n - 1));
+                arr[i * n * n + j * n + k] = glm::vec3(i, j, k) * (scale / (n - 1)) + getRandVec3() * 0.01f;
             }
         }
     }
@@ -111,7 +111,7 @@ GLFWwindow *initWindow()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
     // glfwWindowHint(GLFW_DECORATED, GL_FALSE);
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "More Triangles", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "SPH Simulation", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
