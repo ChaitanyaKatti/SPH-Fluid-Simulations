@@ -159,3 +159,15 @@ void Particles::applyForces(){
     }
 }
 
+void Particles::setPositions(glm::vec3* positions){
+    this->positions = positions;
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, num_points * sizeof(glm::vec3), positions);
+    glBindVertexArray(0);
+
+    for (int i = 0; i < num_points; i++){
+        velocities[i] = glm::vec3(0.0f);
+        colors[i] = glm::vec3(1.0f);
+    }
+}

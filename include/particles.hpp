@@ -35,4 +35,5 @@ public:
     Particles(const float mass, const float resting_density, const float radius, glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader); 
     void update();
     void Draw();
+    void setPositions(glm::vec3* positions);
 };

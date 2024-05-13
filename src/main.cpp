@@ -78,6 +78,10 @@ int main()
 #ifdef IMGUI
         imguiNewFrame();
 #endif
+        if(glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
+            genUniformVec3Array(positions, NUM_INS_DIM , 7.0f);
+            particles.setPositions(positions);
+        }
         if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
             particles.update();
         }
