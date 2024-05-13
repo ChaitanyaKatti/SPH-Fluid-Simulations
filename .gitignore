@@ -50,7 +50,6 @@ rules.ninja
 *.slo
 *.lo
 *.o
-*.obj
 
 # Misc.
 *.log
