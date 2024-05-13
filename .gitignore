@@ -13,7 +13,6 @@ build-*
 
 # Editor/IDE clutter
 .vs
-.vscode
 *.swp
 _ReSharper*
 *.sdf
