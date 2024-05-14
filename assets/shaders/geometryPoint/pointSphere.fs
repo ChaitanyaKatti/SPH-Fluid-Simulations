@@ -26,17 +26,17 @@ void main() {
     vec2 uv = 2*fUV - 1;
     vec3 axisComponents = vec3(uv, sqrt(1.0 - dot(uv, uv)));
     vec3 modelNormal = axisMatrix*axisComponents;
-    vec3 halfDir = normalize(-ligthDir + normalize(fNormal));
-    float shade = 0.5 * max(0.0, dot(-ligthDir, modelNormal));
-    shade += 0.2 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
-    shade += 0.3;
-    fragColor = vec4(fColor*shade,  1.0);
+    // vec3 halfDir = normalize(-ligthDir + normalize(fNormal));
+    // float shade = 0.5 * max(0.0, dot(-ligthDir, modelNormal));
+    // shade += 0.2 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
+    // shade += 0.3;
     
     // Write depth to depth buffer by calulating Normalized Device Coordinates
     vec4 NDC = projMatrix * viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);
     float depth = (1 + NDC.z / NDC.w) / 2; // NDC.z is in range [-NDC.w, NDC.w], so we normalize it to [0, 1]
     gl_FragDepth = depth;
-    
-    // fragColor = vec4(vec2(modelNormal), 1.0, 1.0); // Visualize world space normal
-    // fragColor = vec4(vec3(depth), 1.0, 1.0); // Visualize world space normal
+
+    // fragColor = vec4(fColor*shade,  1.0); // Shade with light
+    fragColor = vec4(0.5*modelNormal + 0.5, 1.0); // Shade with world space normal
+    // fragColor = vec4(vec3(depth), 1.0); // Shade with depth
 }

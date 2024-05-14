@@ -41,9 +41,13 @@ int main()
     Shader pointSphereShader(ASSETS_PATH "shaders/geometryPoint/pointSphere.vs", 
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.fs", 
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
+    Shader screenSpaceQuadShader(ASSETS_PATH "shaders/screenSpaceQuad/screenSpaceQuad.vs", 
+                                 ASSETS_PATH "shaders/screenSpaceQuad/screenSpaceQuad.fs");
+    screenSpaceQuadShader.setInt("uColorTexture", 0);
+    screenSpaceQuadShader.setInt("uDepthTexture", 1);
 
     // Camera
-    Camera camera = Camera(glm::vec3(16.0f, 9.0f, 9.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera camera = Camera(glm::vec3(6.0f, 6.0f, 6.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Instances for LODs
     glm::vec3 *positions = new glm::vec3[NUM_INS];
@@ -59,12 +63,17 @@ int main()
     //           { return glm::length(a - camera.position) > glm::length(b - camera.position); });
     // Meshes and Particles
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Particles particles(1.0f, NUM_INS/(7*7*7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
+    Particles particles(1.0f, NUM_INS/(7*7*7), 0.3f, positions, colors, NUM_INS, &pointSphereShader);
 
+    ColorDepthTexture renderTexture(SCR_WIDTH, SCR_HEIGHT);
+    ScreenSpaceQuad screenSpaceQuad(&renderTexture, &screenSpaceQuadShader);
+    
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
     // glEnable(GL_CULL_FACE);
     // glCullFace(GL_BACK);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_PROGRAM_POINT_SIZE);
     glPointSize(1.0f);
     glLineWidth(2.0f);
@@ -82,9 +91,9 @@ int main()
             genUniformVec3Array(positions, NUM_INS_DIM , 7.0f);
             particles.setPositions(positions);
         }
-        // if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
-        // }
+        if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
             particles.update();
+        }
 
         // Input
         camera.ProcessKeyboard(window, deltaTime);
@@ -99,20 +108,22 @@ int main()
         pointSphereShader.setVec3("eyePos", camera.position);
         pointSphereShader.setFloat("uTime", glfwGetTime());
 
-        // Render
-        glClearColor(0.9f, 0.9f, 0.8f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        // Draw Particles
-        glEnable(GL_CULL_FACE);
+        // Draw to RenderTexture
+        renderTexture.MakeRenderTarget();
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        particles.Draw();
+        particles.Draw(); // Draw Particles
 
-        // Draw Cube
+        // Render on screen
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glClearColor(1.0f, 1.0f, 0.9f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDisable(GL_CULL_FACE);
-        cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5)));
+        cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5))); // Draw Cube
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        screenSpaceQuad.Draw(); // Draw Screen Space Quad
 
         // Swap buffers and poll IO events
 #ifdef IMGUI

@@ -151,3 +151,59 @@ glm::mat4 Mesh::getModel(){
     return model;
 }
 
+// SCREEN SPACE QUAD
+ScreenSpaceQuad::ScreenSpaceQuad(Texture* const texture, Shader* const shader){
+    this->texture = texture;
+    this->shader = shader;
+    setupQuad();
+}
+
+void ScreenSpaceQuad::setupQuad(){
+    float quadVertices[] = {
+        // positions        // texture Coords
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+
+    // vertex positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // vertex texture coords
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+
+void ScreenSpaceQuad::Draw(){
+    shader->use();
+    if (texture)
+    {
+        texture->Bind();
+    }
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0); // Unbind VAO
+}
+
+void ScreenSpaceQuad::setTexture(Texture * const texture){
+    this->texture = texture;
+}
+
+void ScreenSpaceQuad::setShader(Shader* const shader){
+    this->shader = shader;
+}

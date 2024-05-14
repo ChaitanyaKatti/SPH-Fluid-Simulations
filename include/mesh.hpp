@@ -35,3 +35,17 @@ public:
 };
 
 
+class ScreenSpaceQuad
+{
+private:
+    unsigned int VAO, VBO;
+    Shader* shader;
+    Texture* texture;
+    void setupQuad();
+public:
+    ScreenSpaceQuad(Texture* const texture, Shader* const shader);
+    void Draw();
+    void setTexture(Texture* const texture);
+    void setShader(Shader* const shader);
+};
+
