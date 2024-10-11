@@ -27,7 +27,7 @@ public:
 
     Camera(glm::vec3 position, glm::vec3 lookat, glm::vec3 worldUp);
     
-    void ProcessKeyboard(GLFWwindow *window, float deltaTime);
+    void ProcessInput(GLFWwindow *window, float deltaTime);
     void ProcessMouseMovement(float xoffset, float yoffset);
     void ProcessMouseScroll(float yoffset);
     

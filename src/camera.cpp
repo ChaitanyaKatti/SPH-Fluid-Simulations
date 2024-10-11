@@ -1,10 +1,9 @@
-#include <camera.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-extern unsigned int SCR_WIDTH;
-extern unsigned int SCR_HEIGHT;
+#include <camera.hpp>
+#include <config.hpp>
 
 Camera::Camera(glm::vec3 position, glm::vec3 lookAt, glm::vec3 worldUp)
 {
@@ -32,7 +31,7 @@ glm::mat4 Camera::GetViewMatrix()
 
 glm::mat4 Camera::GetProjectionMatrix()
 {
-    return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH/(SCR_HEIGHT), 1.0f, 40.0f);
+    return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH / (SCR_HEIGHT), 1.0f, 40.0f);
 }
 
 glm::mat4 Camera::GetViewProjectionMatrix()
@@ -40,7 +39,7 @@ glm::mat4 Camera::GetViewProjectionMatrix()
     return GetProjectionMatrix() * GetViewMatrix();
 }
 
-void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
+void Camera::ProcessInput(GLFWwindow *window, float deltaTime)
 {
     // if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
     //     this->position = glm::vec3(10.0f);
@@ -48,20 +47,19 @@ void Camera::ProcessKeyboard(GLFWwindow *window, float deltaTime)
     //     this->Pitch = -35.3f;
     // }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        this->position += deltaTime*MovementSpeed * this->front;
+        this->position += deltaTime * MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        this->position -= deltaTime*MovementSpeed * this->front;
+        this->position -= deltaTime * MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        this->position -= deltaTime*MovementSpeed * this->right;
+        this->position -= deltaTime * MovementSpeed * this->right;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        this->position += deltaTime*MovementSpeed * this->right;
+        this->position += deltaTime * MovementSpeed * this->right;
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        this->position += deltaTime*MovementSpeed * this->worldUp;
+        this->position += deltaTime * MovementSpeed * this->worldUp;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        this->position -= deltaTime*MovementSpeed * this->worldUp;
+        this->position -= deltaTime * MovementSpeed * this->worldUp;
 
     this->lookAt = this->position + this->front;
-
 
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         this->Pitch += deltaTime * MouseSensitivity;

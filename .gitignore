@@ -70,3 +70,6 @@ docs/Doxyfile
 docs/html
 docs/warnings.txt
 docs/doxygen_sqlite3.db
+
+# Imgui
+Imgui.ini
