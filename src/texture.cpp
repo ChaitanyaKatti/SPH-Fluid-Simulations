@@ -40,6 +40,8 @@ Texture::Texture(int GL_TEXTURE_IDX, const char* path, TextureType type)
             format = GL_RGB;
         else if (nrComponents == 4)
             format = GL_RGBA;
+        else
+            std::cout << "Error: Unknown number of components: " << nrComponents << std::endl;
 
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
