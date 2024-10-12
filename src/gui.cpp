@@ -10,6 +10,7 @@
 #include <gui.hpp>
 #include <config.hpp>
 
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     SCR_WIDTH = width;
@@ -33,14 +34,16 @@ GLFWwindow *initWindow()
         return nullptr;
     }
     glfwMakeContextCurrent(window);
+    glfwSetWindowSizeLimits(window, 800, 600, GLFW_DONT_CARE, GLFW_DONT_CARE);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSwapInterval(0); // Enable vsync
-    // glad: load all OpenGL function pointers
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return nullptr;
     }
+    // Maximize the window
+    glfwMaximizeWindow(window);
     // Set window position to center
     const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     int posX = (mode->width - SCR_WIDTH) / 2;
@@ -75,8 +78,11 @@ void imguiNewFrame()
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(SCR_WIDTH * 0.2, 0.5 * SCR_HEIGHT), ImGuiCond_Once);
     ImGui::Begin("Control Panel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("Number of particles: %d", NUM_INS);
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Text("Simulation Speed: %.3f x", dt / ImGui::GetIO().DeltaTime);
     ImGui::Text("Frame time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::SliderFloat("Time step", &dt, 0.001f, 0.01f);
     ImGui::End();
 }
 

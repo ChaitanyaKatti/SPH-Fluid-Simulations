@@ -38,21 +38,26 @@ inline float viscosityLaplacian(float sqrt_r)
     return 0.0f;
 }
 
-Particles::Particles(const float mass, const float resting_density, const float radius, glm::vec3 *positions, glm::vec3 *colors, int num_points, Shader *const shader) : mass(mass), resting_density(resting_density), radius(radius), positions(positions), colors(colors), num_points(num_points), shader(shader)
+Particles::Particles(const float mass, const float resting_density, const float radius, int num_points, SpatialGrid* grid, Shader *const shader) : mass(mass), resting_density(resting_density), radius(radius), num_points(num_points), grid(grid), shader(shader)
 {
+    positions = new glm::vec3[NUM_INS];
+    colors = new glm::vec3[NUM_INS];
+    
+    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
+    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
     setupParticles();
 }
 
 void Particles::setupParticles()
 {
-    this->velocities = new glm::vec3[num_points];
+    velocities = new glm::vec3[num_points];
     for (int i = 0; i < num_points; i++)
     {
         velocities[i] = glm::vec3(0.0f);
     }
-    this->densities = new float[num_points];
-    this->pressures = new float[num_points];
-    this->forces = new glm::vec3[num_points];
+    densities = new float[num_points];
+    pressures = new float[num_points];
+    forces = new glm::vec3[num_points];
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -143,37 +148,9 @@ void Particles::applyForces(float dt)
         }
         positions[i] += dt * velocities[i]; // + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
 
+        
         // Apply boundary conditions
-        if (positions[i].y < 0.0f)
-        {
-            positions[i].y = EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].y > 10.0f)
-        {
-            positions[i].y = 10.0f - EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
-        if (positions[i].x < 0.0f)
-        {
-            positions[i].x = EPSILON;
-            velocities[i].x *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].x > 10.0f)
-        {
-            positions[i].x = 10.0f - EPSILON;
-            velocities[i].x *= -COEFF_RESTITUTION;
-        }
-        if (positions[i].z < 0.0f)
-        {
-            positions[i].z = EPSILON;
-            velocities[i].z *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].z > 10.0f)
-        {
-            positions[i].z = 10.0f - EPSILON;
-            velocities[i].z *= -COEFF_RESTITUTION;
-        }
+        grid->transformPositionVelocity(positions[i], velocities[i]);
 
         // Update colors
         float speed = glm::length(velocities[i]) / 5.0f;
@@ -183,7 +160,7 @@ void Particles::applyForces(float dt)
 
 void Particles::setPositions(glm::vec3 *positions)
 {
-    this->positions = positions;
+    positions = positions;
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferSubData(GL_ARRAY_BUFFER, 0, num_points * sizeof(glm::vec3), positions);
@@ -194,4 +171,23 @@ void Particles::setPositions(glm::vec3 *positions)
         velocities[i] = glm::vec3(0.0f);
         colors[i] = glm::vec3(1.0f);
     }
+}
+
+void Particles::resetParticles()
+{
+    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
+    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
+    setPositions(positions);
+}
+
+Particles::~Particles()
+{
+    delete[] positions;
+    delete[] colors;
+    delete[] velocities;
+    delete[] densities;
+    delete[] pressures;
+    delete[] forces;
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
 }

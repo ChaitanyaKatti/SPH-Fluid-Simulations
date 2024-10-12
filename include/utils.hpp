@@ -2,6 +2,8 @@
 
 #include <glm/glm.hpp>
 
+void configureOpenGL();
+
 glm::vec3 getRandVec3();
 
 void genRandVec3Array(glm::vec3 *arr, int n, float scale);

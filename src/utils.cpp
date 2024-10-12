@@ -1,5 +1,18 @@
 #include <glm/glm.hpp>
 #include <utils.hpp>
+#include <iostream>
+#include <GLFW/glfw3.h>
+
+void configureOpenGL()
+{
+    glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glPointSize(1.0f);
+    glLineWidth(2.0f);
+    glEnable(GL_MULTISAMPLE);
+}
 
 glm::vec3 getRandVec3()
 {

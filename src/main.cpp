@@ -1,4 +1,3 @@
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -10,6 +9,7 @@
 #include <texture.hpp>
 #include <mesh.hpp>
 #include <particles.hpp>
+#include <spatialgrid.hpp>
 #include <camera.hpp>
 #include <utils.hpp>
 #include <gui.hpp>
@@ -21,7 +21,7 @@ typedef std::chrono::high_resolution_clock Clock;
 double deltaTime = 0.0f;
 
 int main()
-{   
+{
     omp_set_num_threads(8);
     std::cout << "Hello!" << std::endl;
     GLFWwindow *window = initWindow();
@@ -41,25 +41,14 @@ int main()
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
 
     // Camera
-    Camera camera = Camera(glm::vec3(16.0f, 9.0f, 9.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-    // Instances for LODs
-    glm::vec3 *positions = new glm::vec3[NUM_INS];
-    glm::vec3 *colors = new glm::vec3[NUM_INS];
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
-    // Meshes and Particles
-    Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Particles particles(MASS, NUM_INS / (7 * 7 * 7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
+    Camera camera = Camera(glm::vec3(18.0f, 8.0f, 5.0f), glm::vec3(0.0f, 4.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    // Grid and Particles
+    SpatialGrid grid(glm::vec3(10.0f), glm::mat4(10.0f), &colorShader);
+    Particles particles(MASS, DENSITY, 0.1f, NUM_INS, &grid, &pointSphereShader);
 
     // OpenGL state
-    glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
-    // glCullFace(GL_BACK);
-    glEnable(GL_PROGRAM_POINT_SIZE);
-    glPointSize(1.0f);
-    glLineWidth(2.0f);
-    glEnable(GL_MULTISAMPLE);
+    configureOpenGL();
+
     auto lastFrame = Clock::now();
 
     // Render loop
@@ -78,16 +67,15 @@ int main()
             }
             if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
             { // Reset particles
-                genUniformVec3Array(positions, NUM_INS_DIM, 7.0f);
-                particles.setPositions(positions);
+                particles.resetParticles();
             }
         }
-
+        // grid.setTransform(glm::rotate(grid.getTransform(), 0.5f*dt, glm::vec3(0.0f, 1.0f, 0.0f)));
         particles.update(dt); // Update particles
 
         // Set the view and projection matrix in the shader
         colorShader.setMat4("viewProjMatrix", camera.GetViewProjectionMatrix());
-        colorShader.setVec3("color", glm::vec3(1.0f, 0.0f, 1.0f));
+        colorShader.setVec4("color", glm::vec4(1.0f, 0.0f, 1.0f, 0.8f));
 
         pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
         pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
@@ -107,7 +95,9 @@ int main()
         // Draw Cube
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDisable(GL_CULL_FACE);
-        cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5)));
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        grid.drawBoundary();
 
         // Swap buffers and poll IO events
         imguiRender();
@@ -121,8 +111,6 @@ int main()
     }
 
     // Cleanup
-    delete[] positions;
-    delete[] colors;
     imguiDestroy();
     glfwTerminate();
 
