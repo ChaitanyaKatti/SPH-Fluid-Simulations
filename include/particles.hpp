@@ -18,7 +18,13 @@ private:
     Shader* shader;
     
     unsigned int VAO, VBO;
-    
+
+    int hashTableSize = 10;
+    int* countArray;
+    int* startIndex;
+    int* stopIndex;
+    int* indexArray;
+
     // Smoothed Particle Hydrodynamics
     glm::vec3 *velocities;
     float *densities;
@@ -28,7 +34,8 @@ private:
     void setupParticles();
     void calculateDensityAndPressure();
     void applyForces(float dt);
-
+    void updateHash();
+    int hash(glm::vec3 p);
 public:
     Particles(const float mass, const float resting_density, const float radius, glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader); 
     void update(float dt);

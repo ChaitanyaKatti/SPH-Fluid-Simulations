@@ -46,18 +46,18 @@ int main()
     // Instances for LODs
     glm::vec3 *positions = new glm::vec3[NUM_INS];
     glm::vec3 *colors = new glm::vec3[NUM_INS];
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
+    genUniformVec3Array(positions, NUM_INS_DIM, 7.0f);
     genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
     // Meshes and Particles
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Particles particles(MASS, NUM_INS / (7 * 7 * 7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
+    Particles particles(MASS, NUM_INS / (8 * 8 * 8), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
     // glEnable(GL_CULL_FACE);
     // glCullFace(GL_BACK);
-    glEnable(GL_PROGRAM_POINT_SIZE);
-    glPointSize(1.0f);
+    // glEnable(GL_PROGRAM_POINT_SIZE);
+    // glPointSize(1.0f);
     glLineWidth(2.0f);
     glEnable(GL_MULTISAMPLE);
     auto lastFrame = Clock::now();
@@ -93,7 +93,6 @@ int main()
         pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
         pointSphereShader.setVec3("eyePos", camera.position);
         pointSphereShader.setFloat("uTime", glfwGetTime());
-
         // Render
         glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -113,6 +112,7 @@ int main()
         imguiRender();
         glfwSwapBuffers(window);
         glfwPollEvents();
+        std::cout << "asdasdasdasdasd" << "\n";
 
         // Calculate FPS
         auto currentFrame = Clock::now();
