@@ -177,8 +177,8 @@ void Particles::calculateDensityAndPressure()
                     if ((positions[i].z < 1 && z==-1) || (positions[i].z > 9 && z==1))
                         continue;
 
-                    int cellId = hash(positions[i] + glm::vec3(x ,y, z)); //((int)(positions[i].x) + x) + ((int)(positions[i].y) + y) * 10 + ((int)(positions[i].z) + z) * 100;
-                    // cellId = cellId % 1000;
+                    int cellId = ((int)(positions[i].x) + x) + ((int)(positions[i].y) + y) * 10 + ((int)(positions[i].z) + z) * 100;
+                    cellId = cellId % 1000;
                     if( stopIndex[cellId] - startIndex[cellId]>1){
                     }
                     for (int j = startIndex[cellId]; j < stopIndex[cellId]; j++)

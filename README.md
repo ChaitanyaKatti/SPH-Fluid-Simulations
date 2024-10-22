@@ -9,7 +9,7 @@ Basic implementation of 3D SPH in C++ and OpenGL.
 - [x] OpenGL rendering
 - [X] Boundary handling
 - [x] Viscosity
-- [ ] Spatial hashed grid
-- [ ] Compute shader implementation
+- [x] Spatial hashed grid
+- [ ] CUDA Implementation
 - [ ] Surface tension
 - [ ] Interactive mode
