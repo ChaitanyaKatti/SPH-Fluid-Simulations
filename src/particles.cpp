@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <iostream>
+#include <algorithm>
 
 #include <particles.hpp>
 #include <utils.hpp>
@@ -38,27 +39,33 @@ inline float viscosityLaplacian(float sqrt_r)
     return 0.0f;
 }
 
-Particles::Particles(const float mass, const float resting_density, const float radius, int num_points, SpatialGrid* grid, Shader *const shader) : mass(mass), resting_density(resting_density), radius(radius), num_points(num_points), grid(grid), shader(shader)
+Particles::Particles(const float mass, const float resting_density, const float radius, int num_points, int hash_table_size, SpatialGrid* grid, Shader *const shader) : mass(mass), resting_density(resting_density), radius(radius), num_points(num_points), hash_table_size(hash_table_size), grid(grid), shader(shader)
 {
-    positions = new glm::vec3[NUM_INS];
-    colors = new glm::vec3[NUM_INS];
-    
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
-    setupParticles();
-}
+    std::cout << "Hash table size: " << hash_table_size << std::endl;
+    positions = new glm::vec3[num_points];
+    colors = new glm::vec3[num_points];
 
-void Particles::setupParticles()
-{
     velocities = new glm::vec3[num_points];
-    for (int i = 0; i < num_points; i++)
-    {
-        velocities[i] = glm::vec3(0.0f);
-    }
     densities = new float[num_points];
     pressures = new float[num_points];
     forces = new glm::vec3[num_points];
 
+    start_index = new int[hash_table_size];
+    end_index = new int[hash_table_size];
+    particleMap = new int[num_points];
+
+    for (int i = 0; i < num_points; i++)
+    {
+        velocities[i] = glm::vec3(0.0f);
+    }
+
+    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
+    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
+    setupVAO();
+}
+
+void Particles::setupVAO()
+{
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -79,10 +86,10 @@ void Particles::setupParticles()
 
 void Particles::update(float dt)
 {
+    updateHashTable();
     calculateDensityAndPressure();
     applyForces(dt);
-    // std::cout << "positions " << positions[0].x << " " << positions[0].y << " " << positions[0].z << std::endl;
-    // std::cout << "forces    "  << forces[0].x << " " << forces[0].y << " " << forces[0].z << std::endl;
+
     // Update VBO
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -104,17 +111,53 @@ void Particles::Draw()
 
 void Particles::calculateDensityAndPressure()
 {
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int i = 0; i < num_points; i++)
     {
         densities[i] = 0.0f;
-        for (int j = 0; j < num_points; j++)
+        
+        // Calculate density, O(n^2) complexity
+        // for (int j = 0; j < num_points; j++)
+        // {
+        //     if (i != j)
+        //     {
+        //         glm::vec3 r = positions[i] - positions[j];
+        //         float r2 = glm::dot(r, r);
+        //         densities[i] += mass * poly6Kernel(r2);
+        //     }
+        // }
+
+        // Calculate density, O(n) complexity
+        for (int x = -1; x <= 1; x++)
         {
-            if (i != j)
+            for (int y = -1; y <= 1; y++)
             {
-                glm::vec3 r = positions[i] - positions[j];
-                float r2 = glm::dot(r, r);
-                densities[i] += mass * poly6Kernel(r2);
+                for (int z = -1; z <= 1; z++)
+                {
+                    // glm::ivec3 cellId = grid->getCellIdWithOffset(positions[i], glm::ivec3(x, y, z));
+                    glm::ivec3 cellId = grid->getCellId(positions[i]) + glm::ivec3(x, y, z);
+                    int hash_neigh = hashCoords(cellId);
+                    for (int j = start_index[hash_neigh]; j < end_index[hash_neigh]; j++)
+                    {
+                        int neighIndex = particleMap[j];
+                        if (i != neighIndex)
+                        {
+                            glm::vec3 r = positions[i] - positions[neighIndex];
+                            float r2 = glm::dot(r, r);
+                            if (r2 < h2)
+                            {   
+                                densities[i] += mass * poly6Kernel(r2);
+                                colors[i] = glm::vec3(1.0f, 1.0f, 1.0f);
+                                colors[neighIndex] = glm::vec3(1.0f, 1.0f, 1.0f);
+                            }
+                            else{
+                                // Resolve hash collision
+                                colors[i] = glm::vec3(1.0f, 1.0f, 0.0f);
+                                colors[neighIndex] = glm::vec3(1.0f, 1.0f, 0.0f);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -124,19 +167,51 @@ void Particles::calculateDensityAndPressure()
 
 void Particles::applyForces(float dt)
 {
-#pragma omp parallel for
+// #pragma omp parallel for
     for (int i = 0; i < num_points; i++)
     {
         forces[i] = glm::vec3(0.0f, -mass * g, 0.0f); // Gravity
 
-        for (int j = 0; j < num_points; j++)
+        // Calculate forces, O(n^2) complexity
+        // for (int j = 0; j < num_points; j++)
+        // {
+        //     if (i != j)
+        //     {
+        //         glm::vec3 r = positions[i] - positions[j];
+        //         float sqrt_r = glm::length(r);
+        //         forces[i] += -mass * (pressures[i] + pressures[j]) / (2.0f * densities[j] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
+        //         forces[i] += mu * mass * (velocities[j] - velocities[i]) / (densities[j] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+        //     }
+        // }
+
+        // Calculate forces, O(n) complexity
+        for (int x = -1; x <= 1; x++)
         {
-            if (i != j)
+            for (int y = -1; y <= 1; y++)
             {
-                glm::vec3 r = positions[i] - positions[j];
-                float sqrt_r = glm::length(r);
-                forces[i] += -mass * (pressures[i] + pressures[j]) / (2.0f * densities[j] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
-                forces[i] += mu * mass * (velocities[j] - velocities[i]) / (densities[j] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+                for (int z = -1; z <= 1; z++)
+                {
+                    glm::ivec3 cellId = grid->getCellId(positions[i]) + glm::ivec3(x, y, z);
+                    int hash_neigh = hashCoords(cellId);
+                    for (int j = start_index[hash_neigh]; j < end_index[hash_neigh]; j++)
+                    {
+                        int neigh = particleMap[j];
+                        if (i != neigh)
+                        {
+                            glm::vec3 r = positions[i] - positions[neigh];
+                            float sqrt_r = glm::length(r);
+                            // if (sqrt_r < h)
+                            // {
+                                forces[i] += -mass * (pressures[i] + pressures[neigh]) / (2.0f * densities[neigh] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
+                                forces[i] += mu * mass * (velocities[neigh] - velocities[i]) / (densities[neigh] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+                            // }
+                            // else{
+                                // Resolve hash collision
+                                // std::cout << "Hash collision detected" << std::endl;
+                            // }
+                        }
+                    }
+                }
             }
         }
 
@@ -146,15 +221,20 @@ void Particles::applyForces(float dt)
         {
             velocities[i] = glm::normalize(velocities[i]) * MAX_VELOCITY;
         }
-        positions[i] += dt * velocities[i]; // + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
+        positions[i] += dt * velocities[i];// + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
 
         
         // Apply boundary conditions
-        grid->transformPositionVelocity(positions[i], velocities[i]);
+        if (positions[i][1] < 0.0f)
+        {
+            positions[i][1] = 0.0f;
+            velocities[i][1] = -COEFF_RESTITUTION * velocities[i][1];
+        }
+        // grid->transformPositionVelocity(positions[i], velocities[i]);
 
         // Update colors
-        float speed = glm::length(velocities[i]) / 5.0f;
-        colors[i] = colorParticleBGR1(speed);
+        // float speed = glm::length(velocities[i]) / 5.0f;
+        // colors[i] = colorParticleBGR1(speed);
     }
 }
 
@@ -180,6 +260,47 @@ void Particles::resetParticles()
     setPositions(positions);
 }
 
+int Particles::hashCoords(glm::ivec3 cellId)
+{
+    int hash = (cellId.x * 92837111) ^ (cellId.y * 689287499) ^ (cellId.z * 283923481); // Credit Matthias Muller
+    return abs(hash % hash_table_size);
+    // glm::ivec3 num_cells = grid->getNumCells();
+    // int hash = (cellId.x + num_cells.x * (cellId.y + num_cells.y * cellId.z)) % hash_table_size;
+    // return hash;
+}
+
+void Particles::updateHashTable()
+{
+    std::fill(start_index, start_index + hash_table_size, 0);
+    std::fill(end_index, end_index + hash_table_size, 0);
+    std::fill(particleMap, particleMap + num_points, 0);
+    // For every particle, add +1 at the hash index
+    for (int i = 0; i < num_points; i++)
+    {
+        glm::ivec3 cellId = grid->getCellId(positions[i]);
+        int hashedCellId = hashCoords(cellId);
+        end_index[hashedCellId]++;
+    }
+
+    // Prefix sum
+    for (int i = 1; i < hash_table_size; i++)
+    {
+        end_index[i] += end_index[i - 1];
+    }
+
+    // Copy end_index to start_index
+    std::copy_n(end_index, hash_table_size, start_index);
+
+    // For every particle, subtract -1 at the hash index and add the index to particleMap
+    for (int i = 0; i < num_points; i++)
+    {
+        glm::ivec3 cellId = grid->getCellId(positions[i]);
+        int hashedCellId = hashCoords(cellId);
+        start_index[hashedCellId]--;
+        particleMap[start_index[hashedCellId]] = i;
+    }
+}
+
 Particles::~Particles()
 {
     delete[] positions;
@@ -188,6 +309,9 @@ Particles::~Particles()
     delete[] densities;
     delete[] pressures;
     delete[] forces;
+    delete[] start_index;
+    delete[] end_index;
+    delete[] particleMap;
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
 }

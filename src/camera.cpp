@@ -71,6 +71,15 @@ void Camera::ProcessInput(GLFWwindow *window, float deltaTime)
         this->Yaw += deltaTime * MouseSensitivity;
     this->Pitch = glm::clamp(this->Pitch, -89.0f, 89.0f);
 
+    // Get mouse Delta
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    static double lastX = xpos, lastY = ypos;
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
     updateCameraVectors();
 }
 

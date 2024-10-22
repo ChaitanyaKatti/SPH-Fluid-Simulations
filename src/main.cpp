@@ -22,7 +22,7 @@ double deltaTime = 0.0f;
 
 int main()
 {
-    omp_set_num_threads(8);
+    omp_set_num_threads(1);
     std::cout << "Hello!" << std::endl;
     GLFWwindow *window = initWindow();
     if (window == NULL)
@@ -43,8 +43,8 @@ int main()
     // Camera
     Camera camera = Camera(glm::vec3(18.0f, 8.0f, 5.0f), glm::vec3(0.0f, 4.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     // Grid and Particles
-    SpatialGrid grid(glm::vec3(10.0f), glm::mat4(10.0f), &colorShader);
-    Particles particles(MASS, DENSITY, 0.1f, NUM_INS, &grid, &pointSphereShader);
+    SpatialGrid grid(1.0, glm::mat4(10.0f), &colorShader);
+    Particles particles(MASS, DENSITY, 0.1f, NUM_INS, 1000, &grid, &pointSphereShader);
 
     // OpenGL state
     configureOpenGL();

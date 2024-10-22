@@ -6,19 +6,27 @@
 class SpatialGrid
 {
 private:
-    glm::vec3 num_cells = glm::vec3(10.0f);
-    glm::mat4 transform = glm::mat4(1.0f);
-    glm::mat4 inv_transform = glm::mat4(1.0f);
+    float cell_spacing;
+    glm::mat4 transform;
+    glm::mat4 inv_transform;
     Shader* shader;
+
+    glm::ivec3 num_cells;
 
     unsigned int VAO, VBO, EBO;
     std::vector<float> vertices;
 
 public:
-    SpatialGrid(glm::vec3 num_cells, glm::mat4 transform, Shader* const shader);
+    SpatialGrid(float cell_spacing, glm::mat4 transform, Shader* const shader);
     void transformPositionVelocity(glm::vec3 &p, glm::vec3 &v);
     void drawBoundary();
     void drawGrid();
     void setTransform(glm::mat4 transform);
     glm::mat4 getTransform();
+    glm::mat4 getInvTransform();
+    glm::ivec3 getNumCells();
+    int getTotCells();
+    glm::ivec3 getCellId(glm::vec3 p);
+    glm::ivec3 getCellIdWithOffset(glm::vec3 p, glm::ivec3 offset);
+    float getCellSpacing();
 };
