@@ -107,6 +107,7 @@
         "build/CMakeFiles": true,
         "build/**.cmake": true,
         "build/**.json": true,
-        "build/CMakeCache.txt": true
+        "build/CMakeCache.txt": true,
+        "build/**ninja**": true,
     }
 }

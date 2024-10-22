@@ -1,7 +1,7 @@
 #pragma once
 
 // Particle parameters
-inline int NUM_INS_DIM = 15;
+inline int NUM_INS_DIM = 12;
 inline int NUM_INS = NUM_INS_DIM * NUM_INS_DIM * NUM_INS_DIM;
 
 // SPH parameters

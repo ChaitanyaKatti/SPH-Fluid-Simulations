@@ -1,3 +1,4 @@
+// #define _GLFW_WAYLAND 1
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -46,18 +47,14 @@ int main()
     // Instances for LODs
     glm::vec3 *positions = new glm::vec3[NUM_INS];
     glm::vec3 *colors = new glm::vec3[NUM_INS];
-    genUniformVec3Array(positions, NUM_INS_DIM, 7.0f);
+    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
     genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
     // Meshes and Particles
     Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Particles particles(MASS, NUM_INS / (8 * 8 * 8), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
+    Particles particles(MASS, NUM_INS / (7 * 7 * 7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
-    // glCullFace(GL_BACK);
-    // glEnable(GL_PROGRAM_POINT_SIZE);
-    // glPointSize(1.0f);
     glLineWidth(2.0f);
     glEnable(GL_MULTISAMPLE);
     auto lastFrame = Clock::now();
@@ -78,7 +75,7 @@ int main()
             }
             if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
             { // Reset particles
-                genUniformVec3Array(positions, NUM_INS_DIM, 7.0f);
+                genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
                 particles.setPositions(positions);
             }
         }
@@ -112,7 +109,6 @@ int main()
         imguiRender();
         glfwSwapBuffers(window);
         glfwPollEvents();
-        std::cout << "asdasdasdasdasd" << "\n";
 
         // Calculate FPS
         auto currentFrame = Clock::now();

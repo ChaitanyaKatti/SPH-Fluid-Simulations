@@ -19,19 +19,18 @@ private:
     
     unsigned int VAO, VBO;
 
-    int hashTableSize = 10;
-    int* countArray;
+    int hashTableSize = 1000;
     int* startIndex;
     int* stopIndex;
     int* indexArray;
 
     // Smoothed Particle Hydrodynamics
-    glm::vec3 *velocities;
     float *densities;
     float *pressures;
     glm::vec3 *forces;
+    glm::vec3 *velocities;
 
-    void setupParticles();
+    void setupVAO();
     void calculateDensityAndPressure();
     void applyForces(float dt);
     void updateHash();
