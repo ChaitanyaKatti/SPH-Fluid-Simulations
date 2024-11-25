@@ -75,8 +75,18 @@ void Camera::ProcessInput(GLFWwindow *window, float deltaTime)
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
     static double lastX = xpos, lastY = ypos;
+    static bool firstMouse = true;
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos;
+    if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS){
+        if (firstMouse)
+        {
+            xoffset = 0;
+            yoffset = 0;
+            firstMouse = false;
+        }
+        ProcessMouseMovement(xoffset*deltaTime, yoffset*deltaTime);
+    }
     lastX = xpos;
     lastY = ypos;
 
@@ -90,10 +100,7 @@ void Camera::ProcessMouseMovement(float xoffset, float yoffset)
 
     this->Yaw += xoffset;
     this->Pitch += yoffset;
-    if (Pitch > 89.0f)
-        Pitch = 89.0f;
-    if (Pitch < -89.0f)
-        Pitch = -89.0f;
+    this->Pitch = glm::clamp(this->Pitch, -89.0f, 89.0f);
 
     updateCameraVectors();
 }

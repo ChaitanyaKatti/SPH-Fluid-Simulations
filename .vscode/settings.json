@@ -92,7 +92,9 @@
         "typeindex": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "*.txx": "cpp",
+        "__availability": "cpp"
     },
 
     "files.exclude": {

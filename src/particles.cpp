@@ -230,7 +230,7 @@ void Particles::applyForces(float dt)
             positions[i][1] = 0.0f;
             velocities[i][1] = -COEFF_RESTITUTION * velocities[i][1];
         }
-        // grid->transformPositionVelocity(positions[i], velocities[i]);
+        grid->transformPositionVelocity(positions[i], velocities[i]);
 
         // Update colors
         // float speed = glm::length(velocities[i]) / 5.0f;
