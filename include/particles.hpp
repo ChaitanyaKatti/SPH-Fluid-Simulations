@@ -4,22 +4,16 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <shader.hpp>
-#include <texture.hpp>
 
 class Particles
 {
 private:
-    float mass;
-    float resting_density;
-    float radius;
     glm::vec3 *positions;
     glm::vec3 *colors;
-    int num_points;
     Shader* shader;
     
     unsigned int VAO, VBO;
 
-    int hashTableSize = 1000;
     int* startIndex;
     int* stopIndex;
     int* indexArray;
@@ -36,8 +30,10 @@ private:
     void updateHash();
     int hash(glm::vec3 p);
 public:
-    Particles(const float mass, const float resting_density, const float radius, glm::vec3* positions, glm::vec3* colors, int num_points, Shader* const shader); 
+    Particles(Shader* const shader); 
     void update(float dt);
     void Draw();
     void setPositions(glm::vec3* positions);
+    void reset();
+    ~Particles();
 };

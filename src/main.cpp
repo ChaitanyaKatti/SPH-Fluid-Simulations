@@ -8,11 +8,8 @@
 #include <imgui.h>
 
 #include <shader.hpp>
-#include <texture.hpp>
-#include <mesh.hpp>
 #include <particles.hpp>
 #include <camera.hpp>
-#include <utils.hpp>
 #include <gui.hpp>
 #include <config.hpp>
 #include <omp.h>
@@ -35,28 +32,20 @@ int main()
     ImGuiIO &io = ImGui::GetIO();
 
     // Shaders
-    Shader colorShader(ASSETS_PATH "shaders/color/color.vs",
-                       ASSETS_PATH "shaders/color/color.fs");
     Shader pointSphereShader(ASSETS_PATH "shaders/geometryPoint/pointSphere.vs",
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.fs",
                              ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
 
     // Camera
-    Camera camera = Camera(glm::vec3(16.0f, 9.0f, 9.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    Camera camera = Camera(glm::vec3(5.0f, 5.0f, 10.0f), glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-    // Instances for LODs
-    glm::vec3 *positions = new glm::vec3[NUM_INS];
-    glm::vec3 *colors = new glm::vec3[NUM_INS];
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-    genUniformVec3Array(colors, NUM_INS_DIM, 1.0f);
     // Meshes and Particles
-    Mesh cube = Mesh(ASSETS_PATH "models/cube.obj", nullptr, &colorShader);
-    Particles particles(MASS, NUM_INS / (7 * 7 * 7), 0.1f, positions, colors, NUM_INS, &pointSphereShader);
+    Particles particles(&pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
-    glLineWidth(2.0f);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_CULL_FACE);
     auto lastFrame = Clock::now();
 
     // Render loop
@@ -75,35 +64,24 @@ int main()
             }
             if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
             { // Reset particles
-                genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-                particles.setPositions(positions);
+                particles.reset();
             }
         }
 
         particles.update(dt); // Update particles
 
-        // Set the view and projection matrix in the shader
-        colorShader.setMat4("viewProjMatrix", camera.GetViewProjectionMatrix());
-        colorShader.setVec3("color", glm::vec3(1.0f, 0.0f, 1.0f));
-
         pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
         pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
         pointSphereShader.setVec3("eyePos", camera.position);
         pointSphereShader.setFloat("uTime", glfwGetTime());
+        
         // Render
         glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
         // Draw Particles
-        glEnable(GL_CULL_FACE);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         particles.Draw();
-
-        // Draw Cube
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDisable(GL_CULL_FACE);
-        cube.Draw(glm::scale(glm::translate(glm::mat4(1), glm::vec3(5)), glm::vec3(5)));
 
         // Swap buffers and poll IO events
         imguiRender();
@@ -117,8 +95,6 @@ int main()
     }
 
     // Cleanup
-    delete[] positions;
-    delete[] colors;
     imguiDestroy();
     glfwTerminate();
 

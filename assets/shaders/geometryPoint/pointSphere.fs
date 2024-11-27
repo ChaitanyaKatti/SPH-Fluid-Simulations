@@ -21,14 +21,14 @@ void main() {
     if(length(fUV - 0.5) > 0.5) {
         discard;
     }
-    vec3 ligthDir = -normalize(vec3(sin(uTime), 1.0, cos(uTime)));
+    vec3 ligthDir = normalize(vec3(-1.0, -1.0, -1.0));
 
     vec2 uv = 2*fUV - 1;
     vec3 axisComponents = vec3(uv, sqrt(1.0 - dot(uv, uv)));
     vec3 modelNormal = axisMatrix*axisComponents;
     vec3 halfDir = normalize(-ligthDir + normalize(fNormal));
     float shade = 0.5 * max(0.0, dot(-ligthDir, modelNormal));
-    shade += 0.2 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
+    shade += 0.1 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
     shade += 0.3;
     fragColor = vec4(fColor*shade,  1.0);
     
