@@ -73,10 +73,6 @@ Particles::Particles(Shader *const shader) : shader(shader)
     this->pressures = new float[NUM_INS];      // Pressure
     this->forces = new glm::vec3[NUM_INS];     // Forces
     this->velocities = new glm::vec3[NUM_INS]; // Velocities
-    // Arrays for hash table
-    startIndex = new int[HashTableSize];
-    stopIndex = new int[HashTableSize];
-    indexArray = new int[NUM_INS];
 
     // Rendering
     setupVAO();
@@ -269,7 +265,4 @@ Particles::~Particles()
     delete[] pressures;
     delete[] forces;
     delete[] velocities;
-    delete[] startIndex;
-    delete[] stopIndex;
-    delete[] indexArray;
 }
