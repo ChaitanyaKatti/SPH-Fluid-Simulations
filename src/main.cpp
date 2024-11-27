@@ -68,7 +68,7 @@ int main()
             }
         }
 
-        particles.update(dt); // Update particles
+        particles.update(); // Update particles
 
         pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
         pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());

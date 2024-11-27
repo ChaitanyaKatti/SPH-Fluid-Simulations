@@ -1,6 +1,4 @@
 #include <glad/glad.h>
-#include <iostream>
-
 #include <particles.hpp>
 #include <config.hpp>
 
@@ -100,11 +98,11 @@ void Particles::setupVAO()
     glBindVertexArray(0);
 }
 
-void Particles::update(float dt)
+void Particles::update()
 {
     updateHash();
     calculateDensityAndPressure();
-    applyForces(dt);
+    applyForces();
 
     // Update VBO
     glBindVertexArray(VAO);
@@ -204,7 +202,7 @@ void Particles::calculateDensityAndPressure()
     }
 }
 
-void Particles::applyForces(float dt)
+void Particles::applyForces()
 {
 #pragma omp parallel for
     for (int i = 0; i < NUM_INS; i++)

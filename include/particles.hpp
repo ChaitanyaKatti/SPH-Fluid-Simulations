@@ -26,12 +26,12 @@ private:
 
     void setupVAO();
     void calculateDensityAndPressure();
-    void applyForces(float dt);
+    void applyForces();
     void updateHash();
     int hash(glm::vec3 p);
 public:
     Particles(Shader* const shader); 
-    void update(float dt);
+    void update();
     void Draw();
     void setPositions(glm::vec3* positions);
     void reset();
