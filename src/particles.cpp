@@ -224,16 +224,6 @@ void Particles::applyForces(float dt)
         positions[i] += dt * velocities[i]; // + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
 
         // Apply boundary conditions
-        if (positions[i].y < 0.0f)
-        {
-            positions[i].y = EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].y > 10.0f)
-        {
-            positions[i].y = 10.0f - EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
         if (positions[i].x < 0.0f)
         {
             positions[i].x = EPSILON;
@@ -244,14 +234,24 @@ void Particles::applyForces(float dt)
             positions[i].x = 10.0f - EPSILON;
             velocities[i].x *= -COEFF_RESTITUTION;
         }
+        if (positions[i].y < 0.0f)
+        {
+            positions[i].y = EPSILON;
+            velocities[i].y *= -COEFF_RESTITUTION;
+        }
+        else if (positions[i].y > 10.0f)
+        {
+            positions[i].y = 10.0f - EPSILON;
+            velocities[i].y *= -COEFF_RESTITUTION;
+        }
         if (positions[i].z < 0.0f)
         {
             positions[i].z = EPSILON;
             velocities[i].z *= -COEFF_RESTITUTION;
         }
-        else if (positions[i].z > 10.0f)
+        else if (positions[i].z > 5.0f)
         {
-            positions[i].z = 10.0f - EPSILON;
+            positions[i].z = 5.0f - EPSILON;
             velocities[i].z *= -COEFF_RESTITUTION;
         }
 
