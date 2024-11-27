@@ -63,15 +63,15 @@ Particles::Particles(Shader *const shader) : shader(shader)
     {
         colors[i] = glm::vec3(1.0f);
     }
-    this->densities = new float[NUM_INS]; // Density
-    this->pressures = new float[NUM_INS]; // Pressure
-    this->forces = new glm::vec3[NUM_INS]; // Forces
+    this->densities = new float[NUM_INS];      // Density
+    this->pressures = new float[NUM_INS];      // Pressure
+    this->forces = new glm::vec3[NUM_INS];     // Forces
     this->velocities = new glm::vec3[NUM_INS]; // Velocities
     // Arrays for hash table
     startIndex = new int[HashTableSize];
     stopIndex = new int[HashTableSize];
     indexArray = new int[NUM_INS];
-    
+
     // Rendering
     setupVAO();
 }

@@ -6,7 +6,7 @@ inline int NUM_INS = NUM_INS_DIM * NUM_INS_DIM * NUM_INS_DIM;
 
 // SPH parameters
 inline float MASS = 1.0f;              // Particle mass
-inline float RESTING_DENSITY = 20.0f;        // Resting density
+inline float RESTING_DENSITY = 20.0f;  // Resting density
 inline float dt = 0.01f;               // Time step
 inline float h = 1.0f;                 // Smoothing length
 inline float h2 = h * h;               // Smoothing length squared
@@ -17,7 +17,7 @@ inline float g = 9.81f;                // Gravity
 inline float EPSILON = 0.001f;         // Boundary epsilon
 inline float DIVISON_EPSILON = 0.01f;  // Division epsilon
 inline float COEFF_RESTITUTION = 0.8f; // Restitution coefficient
-inline float MAX_VELOCITY = 100.0f;     // Maximum velocity of particles
+inline float MAX_VELOCITY = 100.0f;    // Maximum velocity of particles
 inline int HashTableSize = 1000;
 inline float RenderRadius = 0.05f;
 
