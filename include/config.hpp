@@ -19,8 +19,7 @@ inline float EPSILON = 0.0001f;        // Boundary epsilon
 inline float DIVISON_EPSILON = 0.01f;  // Division epsilon
 inline float COEFF_RESTITUTION = 0.8f; // Restitution coefficient
 inline float MAX_VELOCITY = 100.0f;    // Maximum velocity of particles
-inline int HashTableSize = 1000;
-inline float Radius = 0.02f;
+inline float Radius = 0.02f;           // Particle radius for collision detection
 
 // Window size
 inline unsigned int SCR_WIDTH = 1200;
