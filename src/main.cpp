@@ -1,5 +1,3 @@
-// #define _GLFW_WAYLAND 1
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
