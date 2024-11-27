@@ -57,13 +57,6 @@ inline float viscosityLaplacian(float sqrt_r)
     return 0.0f;
 }
 
-inline int hash(glm::vec3 p)
-{
-    int hash = (int(p.x / h) * 92837111) ^ (int(p.y / h) * 6892287499) ^ (int(p.z / h) * 283923481);
-    hash = abs(hash) % HashTableSize;
-    return hash;
-}
-
 Particles::Particles(Shader *const shader) : shader(shader)
 {
     // Initialize arrays for SPH
@@ -113,7 +106,6 @@ void Particles::setupVAO()
 
 void Particles::update()
 {
-    updateHash();
     calculateDensityAndPressure();
     applyForces();
     resolveCollisions();
@@ -125,39 +117,6 @@ void Particles::update()
     glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), colors);
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
-}
-
-void Particles::updateHash()
-{
-    // Initialize all arrays to zero
-    std::fill(startIndex, startIndex + HashTableSize, 0);
-    std::fill(stopIndex, stopIndex + HashTableSize, 0);
-    std::fill(indexArray, indexArray + NUM_INS, 0);
-
-    // For each particle, find its cell Id and add to count array
-    // #pragma omp parallel for shared(stopIndex)
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        int cellId = hash(positions[i]);
-        stopIndex[cellId]++;
-    }
-
-    // Do partial sum and store in startIndex and stopIndex
-    for (int i = 1; i < HashTableSize; i++)
-    {
-        stopIndex[i] += stopIndex[i - 1];
-    }
-    // copy to start index
-    std::copy_n(stopIndex, HashTableSize, startIndex);
-
-    // For each particle, find its cell Id and add
-    // #pragma omp parallel for shared(startIndex)
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        int cellId = hash(positions[i]);
-        startIndex[cellId]--;
-        indexArray[startIndex[cellId]] = i;
-    }
 }
 
 void Particles::calculateDensityAndPressure()
@@ -238,10 +197,10 @@ void Particles::applyForces()
         }
 
         // Update colors
-        float speed = pow(glm::length(velocities[i])/MAX_VELOCITY, 0.4f);
+        float speed = pow(glm::length(velocities[i]) / MAX_VELOCITY, 0.4f);
         colors[i].x = speed;
         colors[i].y = (1.0f - speed);
-        colors[i].z = 4*colors[i].x * colors[i].y;
+        colors[i].z = 4 * colors[i].x * colors[i].y;
     }
 }
 

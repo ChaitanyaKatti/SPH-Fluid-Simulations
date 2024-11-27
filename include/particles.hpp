@@ -14,10 +14,6 @@ private:
 
     unsigned int VAO, VBO;
 
-    int *startIndex;
-    int *stopIndex;
-    int *indexArray;
-
     // Smoothed Particle Hydrodynamics
     float *densities;
     float *pressures;
@@ -25,7 +21,6 @@ private:
     glm::vec3 *velocities;
 
     void setupVAO();
-    void updateHash();
     void calculateDensityAndPressure();
     void applyForces();
     void resolveCollisions();
