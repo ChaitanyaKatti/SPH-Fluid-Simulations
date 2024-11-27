@@ -1,18 +1,18 @@
 #pragma once
 
 // Particle parameters
-inline int NUM_INS_DIM = 16;
+inline int NUM_INS_DIM = 15;
 inline int NUM_INS = NUM_INS_DIM * NUM_INS_DIM * NUM_INS_DIM;
 
 // SPH parameters
 inline float MASS = 1.0f;              // Particle mass
-inline float RESTING_DENSITY = 20.0f;  // Resting density
+inline float RESTING_DENSITY = 50.0f;  // Resting density
 inline float dt = 0.01f;               // Time step
 inline float h = 1.0f;                 // Smoothing length
 inline float h2 = h * h;               // Smoothing length squared
 inline float h6 = h2 * h2 * h2;        // Smoothing length to the power of 6
-inline float k = 20.0f;                // Stiffness
-inline float mu = 0.5f;                // Viscosity
+inline float k = 20.0f;              // Stiffness
+inline float mu = 1.5f;                // Viscosity
 inline float g = 9.81f;                // Gravity
 inline float EPSILON = 0.001f;         // Boundary epsilon
 inline float DIVISON_EPSILON = 0.01f;  // Division epsilon

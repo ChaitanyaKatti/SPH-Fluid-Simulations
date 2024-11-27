@@ -17,7 +17,7 @@ void genUniformVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
         {
             for (int k = 0; k < n; k++)
             {
-                arr[i * n * n + j * n + k] = glm::vec3(i, j, k) * (scale / (n - 1)); //+ getRandVec3() * 0.01f;
+                arr[i * n * n + j * n + k] = glm::vec3(i, j, k) * (scale / (n - 1));
             }
         }
     }
@@ -58,7 +58,7 @@ Particles::Particles(Shader *const shader) : shader(shader)
     // Initialize arrays for SPH
     this->positions = new glm::vec3[NUM_INS];
     this->colors = new glm::vec3[NUM_INS];
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
+    genUniformVec3Array(positions, NUM_INS_DIM, pow(MASS*NUM_INS/RESTING_DENSITY, 1.0/3.0));
     for (int i = 0; i < NUM_INS; i++)
     {
         colors[i] = glm::vec3(1.0f);
@@ -198,7 +198,7 @@ void Particles::calculateDensityAndPressure()
             }
         }
 
-        pressures[i] = k * (densities[i] - RESTING_DENSITY);
+        pressures[i] = k * max((densities[i] - RESTING_DENSITY), 0);
     }
 }
 
