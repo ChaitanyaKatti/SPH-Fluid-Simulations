@@ -1,7 +1,11 @@
 #include <glad/glad.h>
 #include <particles.hpp>
 #include <config.hpp>
+#include <cuda_runtime.h>
 #include <bits/stdc++.h>
+
+// External CUDA functions
+extern void launchUpdateParticles(float* d_pos, float* d_vel, float* d_acc, int numParticles, float deltaTime);
 
 inline glm::vec3 getRandVec3()
 {
@@ -57,25 +61,28 @@ inline float viscosityLaplacian(float sqrt_r)
     return 0.0f;
 }
 
-Particles::Particles(Shader *const shader) : shader(shader)
-{
-    // Initialize arrays for SPH
-    this->positions = new glm::vec3[NUM_INS];
-    this->colors = new glm::vec3[NUM_INS];
-    std::cout << "Volume: " << pow(MASS * NUM_INS / RESTING_DENSITY, 1.0 / 3.0) << std::endl;
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        colors[i] = glm::vec3(1.0f);
-    }
-    this->densities = new float[NUM_INS];      // Density
-    this->pressures = new float[NUM_INS];      // Pressure
-    this->forces = new glm::vec3[NUM_INS];     // Forces
-    this->velocities = new glm::vec3[NUM_INS]; // Velocities
-
-    // Rendering
-    setupVAO();
+Particles::Particles(Shader* shader) : shader(shader) {
+    // Initialize CPU data
+    h_positions.resize(MAX_PARTICLES * 3);
+    h_velocities.resize(MAX_PARTICLES * 3);
+    h_accelerations.resize(MAX_PARTICLES * 3);
+    
+    // Initialize particles
+    reset();
+    
+    // Initialize CUDA
+    initCUDA();
+    
+    // Setup OpenGL buffers
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * h_positions.size(), h_positions.data(), GL_DYNAMIC_DRAW);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 }
 
 void Particles::setupVAO()
@@ -88,8 +95,8 @@ void Particles::setupVAO()
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3) * 2, nullptr, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), positions);
-    glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), colors);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), d_positions);
+    glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), d_colors);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
     glEnableVertexAttribArray(0);
@@ -100,169 +107,67 @@ void Particles::setupVAO()
     glBindVertexArray(0);
 }
 
-void Particles::update()
-{
-    calculateDensityAndPressure();
-    applyForces();
-    resolveCollisions();
+void Particles::update() {
+    // Launch CUDA kernel
+    launchUpdateParticles(d_positions, d_velocities, d_accelerations, MAX_PARTICLES, 0.016f);
+    
+    // Copy back results for rendering
+    cudaMemcpy(h_positions.data(), d_positions, sizeof(float) * h_positions.size(), cudaMemcpyDeviceToHost);
+    
+    // Update OpenGL buffer
+    updateGPUBuffers();
+}
 
-    // Update VBO
-    glBindVertexArray(VAO);
+void Particles::updateGPUBuffers() {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), positions);
-    glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), colors);
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * h_positions.size(), h_positions.data());
 }
 
-void Particles::calculateDensityAndPressure()
-{
-#pragma omp parallel for shared(densities, pressures)
-    /// N^2 algorithm
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        densities[i] = 0.0f;
-        for (int j = 0; j < NUM_INS; j++)
-        {
-            if (i == j)
-                continue;
-            glm::vec3 r = positions[j] - positions[i];
-            float r2 = glm::dot(r, r);
-            densities[i] += MASS * poly6Kernel(r2);
-        }
-        pressures[i] = k * std::max((densities[i] - RESTING_DENSITY), 0.0f);
-    }
-}
-
-void Particles::applyForces()
-{
-    // N^2 algorithm
-#pragma omp parallel for
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        forces[i] = glm::vec3(0.0f, -MASS * g, 0.0f); // Gravity
-
-        for (int j = 0; j < NUM_INS; j++)
-        {
-            if (i == j)
-                continue;
-            glm::vec3 r = positions[i] - positions[j];
-            float sqrt_r = glm::length(r);
-            forces[i] += -MASS * (pressures[i] + pressures[j]) / (2.0f * densities[j] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
-            forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
-        }
-
-        // Update velocities and positions
-        velocities[i] += dt * forces[i] / (densities[i] + DIVISON_EPSILON);
-        if (glm::length(velocities[i]) > MAX_VELOCITY)
-        {
-            velocities[i] = glm::normalize(velocities[i]) * MAX_VELOCITY;
-        }
-        positions[i] += dt * velocities[i] + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
-
-        // Apply boundary conditions
-        if (positions[i].x < 0.0f)
-        {
-            positions[i].x = EPSILON;
-            velocities[i].x *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].x > 10.0f)
-        {
-            positions[i].x = 10.0f - EPSILON;
-            velocities[i].x *= -COEFF_RESTITUTION;
-        }
-        if (positions[i].y < 0.0f)
-        {
-            positions[i].y = EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].y > 10.0f)
-        {
-            positions[i].y = 10.0f - EPSILON;
-            velocities[i].y *= -COEFF_RESTITUTION;
-        }
-        if (positions[i].z < 0.0f)
-        {
-            positions[i].z = EPSILON;
-            velocities[i].z *= -COEFF_RESTITUTION;
-        }
-        else if (positions[i].z > 5.0f)
-        {
-            positions[i].z = 5.0f - EPSILON;
-            velocities[i].z *= -COEFF_RESTITUTION;
-        }
-
-        // Update colors
-        float speed = pow(glm::length(velocities[i]) / MAX_VELOCITY, 0.4f);
-        colors[i].x = speed;
-        colors[i].y = (1.0f - speed);
-        colors[i].z = 4 * colors[i].x * colors[i].y;
-    }
-}
-
-void Particles::resolveCollisions()
-{
-    // Particle-Particle collisions
-    for (int i = 0; i < NUM_INS; i++)
-    {
-#pragma omp parallel for
-        for (int j = i + 1; j < NUM_INS; j++)
-        {
-            float dist = glm::length(positions[i] - positions[j]);
-            if (dist < 2.0f * Radius)
-            {
-                glm::vec3 normal = glm::normalize(positions[i] - positions[j]);
-                positions[i] += normal * (Radius - 0.5f * dist);
-                positions[j] -= normal * (Radius - 0.5f * dist);
-                velocities[i] -= glm::dot(velocities[i], normal) * normal * (1 + COEFF_RESTITUTION);
-                velocities[j] -= glm::dot(velocities[j], normal) * normal * (1 + COEFF_RESTITUTION);
-            }
-        }
-    }
-}
-
-void Particles::Draw()
-{
+void Particles::Draw() {
     shader->use();
-    shader->setMat4("modelMatrix", glm::mat4(1.0f));
-    shader->setFloat("pointSize", Radius);
     glBindVertexArray(VAO);
-    glDrawArrays(GL_POINTS, 0, NUM_INS);
-    glBindVertexArray(0);
+    glDrawArrays(GL_POINTS, 0, MAX_PARTICLES);
 }
 
-void Particles::setPositions(glm::vec3 *positions)
-{
-    this->positions = positions;
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), positions);
-    glBindVertexArray(0);
-
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        velocities[i] = glm::vec3(0.0f);
-        colors[i] = glm::vec3(1.0f);
+void Particles::reset() {
+    // Initialize particle positions and velocities
+    for (int i = 0; i < MAX_PARTICLES; i++) {
+        // Random initial positions
+        h_positions[i*3] = static_cast<float>(rand()) / RAND_MAX * 10.0f;
+        h_positions[i*3+1] = static_cast<float>(rand()) / RAND_MAX * 10.0f;
+        h_positions[i*3+2] = static_cast<float>(rand()) / RAND_MAX * 10.0f;
+        
+        // Zero initial velocities and accelerations
+        h_velocities[i*3] = h_velocities[i*3+1] = h_velocities[i*3+2] = 0.0f;
+        h_accelerations[i*3] = h_accelerations[i*3+1] = h_accelerations[i*3+2] = 0.0f;
+    }
+    
+    // Update GPU data
+    if (d_positions != nullptr) {
+        cudaMemcpy(d_positions, h_positions.data(), sizeof(float) * h_positions.size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_velocities, h_velocities.data(), sizeof(float) * h_velocities.size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_accelerations, h_accelerations.data(), sizeof(float) * h_accelerations.size(), cudaMemcpyHostToDevice);
     }
 }
 
-void Particles::reset()
-{
-    genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        colors[i] = glm::vec3(1.0f);
-        velocities[i] = glm::vec3(0.0f);
-        forces[i] = glm::vec3(0.0f);
-    }
+Particles::~Particles() {
+    cleanupCUDA();
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
 }
 
-Particles::~Particles()
-{
-    delete[] positions;
-    delete[] colors;
-    delete[] densities;
-    delete[] pressures;
-    delete[] forces;
-    delete[] velocities;
+void Particles::initCUDA() {
+    cudaMalloc(&d_positions, sizeof(float) * h_positions.size());
+    cudaMalloc(&d_velocities, sizeof(float) * h_velocities.size());
+    cudaMalloc(&d_accelerations, sizeof(float) * h_accelerations.size());
+    
+    cudaMemcpy(d_positions, h_positions.data(), sizeof(float) * h_positions.size(), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_velocities, h_velocities.data(), sizeof(float) * h_velocities.size(), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_accelerations, h_accelerations.data(), sizeof(float) * h_accelerations.size(), cudaMemcpyHostToDevice);
+}
+
+void Particles::cleanupCUDA() {
+    cudaFree(d_positions);
+    cudaFree(d_velocities);
+    cudaFree(d_accelerations);
 }

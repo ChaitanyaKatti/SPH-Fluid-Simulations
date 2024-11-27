@@ -1,35 +1,34 @@
 #pragma once
 
-#include <string>
 #include <vector>
 #include <glm/glm.hpp>
 #include <shader.hpp>
 
-class Particles
-{
-private:
-    glm::vec3 *positions;
-    glm::vec3 *colors;
-    Shader *shader;
-
-    unsigned int VAO, VBO;
-
-    // Smoothed Particle Hydrodynamics
-    float *densities;
-    float *pressures;
-    glm::vec3 *forces;
-    glm::vec3 *velocities;
-
-    void setupVAO();
-    void calculateDensityAndPressure();
-    void applyForces();
-    void resolveCollisions();
-
+class Particles {
 public:
-    Particles(Shader *const shader);
+    Particles(Shader* shader);
+    ~Particles();
+    
     void update();
     void Draw();
-    void setPositions(glm::vec3 *positions);
     void reset();
-    ~Particles();
+
+private:
+    void setupVAO();
+    void updateGPUBuffers();
+    void initCUDA();
+    void cleanupCUDA();
+
+    Shader* shader;
+    unsigned int VAO, VBO;
+    
+    std::vector<float> h_positions;     // Host (CPU) positions
+    std::vector<float> h_velocities;    // Host velocities
+    std::vector<float> h_accelerations; // Host accelerations
+    
+    float* d_positions = nullptr;     // Device (GPU) positions
+    float* d_velocities = nullptr;    // Device velocities
+    float* d_accelerations = nullptr; // Device accelerations
+    
+    static const int MAX_PARTICLES = 10000;
 };

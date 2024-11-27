@@ -10,7 +10,6 @@
 #include <camera.hpp>
 #include <gui.hpp>
 #include <config.hpp>
-#include <omp.h>
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -18,7 +17,6 @@ double deltaTime = 0.0f;
 
 int main()
 {
-    omp_set_num_threads(8);
     std::cout << "Hello!" << std::endl;
     GLFWwindow *window = initWindow();
     if (window == NULL)
@@ -66,7 +64,7 @@ int main()
             }
         }
 
-        particles.update(); // Update particles
+        particles.update(); // Update particles (now calls CUDA kernels internally)
         pointSphereShader.setCamera(camera);
 
         // Render

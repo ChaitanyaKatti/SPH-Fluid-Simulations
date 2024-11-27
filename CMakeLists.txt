@@ -1,11 +1,17 @@
 set(CMAKE_WARN_DEPRECATED OFF)
 cmake_minimum_required(VERSION 3.9)
-project(SPH-Fluid-Simulation)
-
-# Set C++ standard
+# Set C++ and CUDA standards
+set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3")
+
+project(SPH-Fluid-Simulation LANGUAGES CXX CUDA)
+
 if(UNIX)
     set(OpenGL_GL_PREFERENCE "GLVND")
 endif()
@@ -59,14 +65,11 @@ if(NOT OPENGL_FOUND)
     message(ERROR "OpenGL not found")
 endif()
 
-# Find OMP
-find_package(OpenMP REQUIRED)
-if(NOT OpenMP_CXX_FOUND)
-    message(ERROR "OpenMP not found")
-endif()
-
 # Add source files
-file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp")
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS 
+    "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/src/*.cu"
+)
 
 # Add header files
 file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/include/*.hpp")
@@ -75,7 +78,7 @@ file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/i
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS} ${IMGUI_SOURCES})
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL OpenMP::OpenMP_CXX)
+target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL cuda cudart)
 
 # External include directories
 target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjloader include)
@@ -83,7 +86,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjload
 # Set output directories
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build
+    CUDA_SEPARABLE_COMPILATION ON
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/") # Set the asset path macro to the absolute path on the dev machine
+target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
