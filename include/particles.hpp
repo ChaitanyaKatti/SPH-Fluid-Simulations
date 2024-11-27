@@ -25,10 +25,10 @@ private:
     glm::vec3 *velocities;
 
     void setupVAO();
+    void updateHash();
     void calculateDensityAndPressure();
     void applyForces();
-    void updateHash();
-    int hash(glm::vec3 p);
+    void resolveCollisions();
 
 public:
     Particles(Shader *const shader);
