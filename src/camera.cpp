@@ -24,28 +24,23 @@ Camera::Camera(glm::vec3 position, glm::vec3 lookAt, glm::vec3 worldUp)
     updateCameraVectors();
 }
 
-glm::mat4 Camera::GetViewMatrix()
+glm::mat4 Camera::GetViewMatrix() const
 {
     return glm::lookAt(position, lookAt, worldUp);
 }
 
-glm::mat4 Camera::GetProjectionMatrix()
+glm::mat4 Camera::GetProjectionMatrix() const
 {
     return glm::perspective(glm::radians(this->fov), (float)SCR_WIDTH / (SCR_HEIGHT), 1.0f, 40.0f);
 }
 
-glm::mat4 Camera::GetViewProjectionMatrix()
+glm::mat4 Camera::GetViewProjectionMatrix() const
 {
     return GetProjectionMatrix() * GetViewMatrix();
 }
 
 void Camera::ProcessInput(GLFWwindow *window, float deltaTime)
 {
-    // if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-    //     this->position = glm::vec3(10.0f);
-    //     this->Yaw = -135.0f;
-    //     this->Pitch = -35.3f;
-    // }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         this->position += deltaTime * MovementSpeed * this->front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

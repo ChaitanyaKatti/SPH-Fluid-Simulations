@@ -1,18 +1,20 @@
 #version 330 core
 precision highp float;
 
+struct Camera {
+    vec3 eyePos;
+    mat4 viewMatrix;
+    mat4 projMatrix;
+};
+
 in vec3 fPos;
 in vec2 fUV;
 in vec3 fColor;
 in vec3 fNormal;
 in mat3 axisMatrix;
 
-uniform float uTime;
 uniform float pointSize;
-uniform vec3 eyePos;
-// uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 projMatrix;
+uniform Camera camera;
 
 out vec4 fragColor;
 // out float gl_FragDepth;
@@ -33,7 +35,7 @@ void main() {
     fragColor = vec4(fColor*shade,  1.0);
     
     // Write depth to depth buffer by calulating Normalized Device Coordinates
-    vec4 NDC = projMatrix * viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);
+    vec4 NDC = camera.projMatrix * camera.viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);
     float depth = (1 + NDC.z / NDC.w) / 2; // NDC.z is in range [-NDC.w, NDC.w], so we normalize it to [0, 1]
     gl_FragDepth = depth;
     

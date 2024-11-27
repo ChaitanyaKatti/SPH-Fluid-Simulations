@@ -67,12 +67,8 @@ int main()
         }
 
         particles.update(); // Update particles
+        pointSphereShader.setCamera(camera);
 
-        pointSphereShader.setMat4("viewMatrix", camera.GetViewMatrix());
-        pointSphereShader.setMat4("projMatrix", camera.GetProjectionMatrix());
-        pointSphereShader.setVec3("eyePos", camera.position);
-        pointSphereShader.setFloat("uTime", glfwGetTime());
-        
         // Render
         glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT);

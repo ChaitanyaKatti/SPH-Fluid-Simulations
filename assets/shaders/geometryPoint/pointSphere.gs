@@ -1,6 +1,12 @@
 #version 330 core
 precision highp float;
 
+struct Camera {
+    vec3 eyePos;
+    mat4 viewMatrix;
+    mat4 projMatrix;
+};
+
 layout (points) in;
 layout (triangle_strip, max_vertices = 4) out;
 
@@ -9,12 +15,8 @@ in VS_OUT {
     vec3 normal;
 } gs_in[];  
 
-uniform float uTime;
 uniform float pointSize;
-uniform vec3 eyePos;
-// uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 projMatrix;
+uniform Camera camera;
 
 out vec3 fPos;
 out vec2 fUV;
@@ -29,7 +31,7 @@ void main() {
     fNormal = gs_in[0].normal;
     
     // Calculate face normal, the normal to the quad
-    vec3 faceNormal = normalize(eyePos - gl_in[0].gl_Position.xyz);
+    vec3 faceNormal = normalize(camera.eyePos - gl_in[0].gl_Position.xyz);
 
     // Calculate axis matrix
     vec3 pos = (gl_in[0].gl_Position).xyz;
@@ -48,19 +50,19 @@ void main() {
     
     // Emit quad
     // 0 1 - Top left
-    gl_Position = projMatrix * viewMatrix * vec4(p0, 1.0);
+    gl_Position = camera.projMatrix * camera.viewMatrix * vec4(p0, 1.0);
     fUV = vec2(1, 1);
     EmitVertex();
     // 1 3 - Bottom left
-    gl_Position = projMatrix * viewMatrix * vec4(p1, 1.0);
+    gl_Position = camera.projMatrix * camera.viewMatrix * vec4(p1, 1.0);
     fUV = vec2(0, 1);
     EmitVertex();
     // 2 0 - Top right
-    gl_Position = projMatrix * viewMatrix * vec4(p2, 1.0);
+    gl_Position = camera.projMatrix * camera.viewMatrix * vec4(p2, 1.0);
     fUV = vec2(1, 0);
     EmitVertex();
     // 3 2 - Bottom right
-    gl_Position = projMatrix * viewMatrix * vec4(p3, 1.0);
+    gl_Position = camera.projMatrix * camera.viewMatrix * vec4(p3, 1.0);
     fUV = vec2(0, 0);
     EmitVertex();
     

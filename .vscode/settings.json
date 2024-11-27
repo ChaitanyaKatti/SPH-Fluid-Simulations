@@ -1,5 +1,7 @@
 {
     "files.associations": {
+        "*.sdf": "xml",
+        "*.geprint": "xml",
         "cstdlib": "cpp",
         "chrono": "cpp",
         "array": "cpp",
@@ -92,7 +94,12 @@
         "typeindex": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "source_location": "cpp",
+        "ranges": "cpp",
+        "shared_mutex": "cpp",
+        "span": "cpp",
+        "stdfloat": "cpp"
     },
 
     "files.exclude": {
