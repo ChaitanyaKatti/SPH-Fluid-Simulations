@@ -7,8 +7,8 @@
 // SPH parameters
 #define MASS 1.0f              // Particle mass
 #define RESTING_DENSITY 9.0f   // Resting density
-#define dt 0.0001f             // Time step
-#define h1 1.0f                // Smoothing length
+#define dt 0.01f             // Time step
+#define h1 1.0f               // Smoothing length
 #define h2 h1 *h1              // Smoothing length squared
 #define h6 h2 *h2 *h2          // Smoothing length to the power of 6
 #define h9 h6 *h2 *h1          // Smoothing length to the power of 9

@@ -2,6 +2,7 @@
     "files.associations": {
         "*.sdf": "xml",
         "*.geprint": "xml",
+        "*.cuh": "cuda-cpp",
         "cstdlib": "cpp",
         "chrono": "cpp",
         "array": "cpp",
@@ -100,7 +101,10 @@
         "shared_mutex": "cpp",
         "span": "cpp",
         "stdfloat": "cpp",
-        "coroutine": "cpp"
+        "coroutine": "cpp",
+        "stacktrace": "cpp",
+        "regex": "cpp",
+        "__bit_reference": "cpp"
     },
 
     "files.exclude": {

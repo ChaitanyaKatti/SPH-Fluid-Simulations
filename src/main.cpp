@@ -6,7 +6,7 @@
 #include <imgui.h>
 
 #include <shader.hpp>
-#include <particles.cuh>
+#include <particle_system.cuh>
 #include <camera.hpp>
 #include <gui.hpp>
 #include <config.hpp>
@@ -60,12 +60,12 @@ int main()
             }
             if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
             { // Reset particles
-                particles.reset();
+                particles.resetParticles();
             }
         }
 
         // Update particles using CUDA
-        particles.updateGPU(); // Call the CUDA-based update method
+        particles.updateParticles(); // Call the CUDA-based update method
 
         pointSphereShader.setCamera(camera);
 
@@ -74,8 +74,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         glClear(GL_DEPTH_BUFFER_BIT);
 
-        // Draw Particles
-        particles.Draw();
+        // renderParticles Particles
+        particles.renderParticles();
 
         // Swap buffers and poll IO events
         imguiRender();

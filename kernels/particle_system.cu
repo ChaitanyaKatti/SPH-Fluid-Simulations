@@ -2,45 +2,33 @@
 #include <config.hpp>
 #include <bits/stdc++.h>
 #include <cuda_runtime.h>
-#include <particles.cuh>
-#include <vector_operators.cuh>
-
-#include <cuda_runtime.h>
-#include <glm/glm.hpp>
+#include <math_vector.cuh>
+#include <particle_system.cuh>
 #include <cmath>
-#include <config.hpp>
 #include <time.h>
 
 // Kernel functions for SPH simulation
 __device__ inline float viscosityLaplacian(float sqrt_r)
 {
-    if (sqrt_r < h1)
-    {
-        return 45.0f / (M_PI * h6) * (h1 - sqrt_r);
-    }
-    return 0.0f;
+    return (sqrt_r < h1) ? 45.0f / (M_PI * h6) * (h1 - sqrt_r) : 0.0f;
 }
 
-__device__ inline glm::vec3 spikyGradient(glm::vec3 r, float sqrt_r)
+__device__ inline Vec3 spikyGradient(Vec3 r, float sqrt_r)
 {
     if (sqrt_r < h1)
     {
         if (sqrt_r < 0.0001f)
         {
-            return (float)(-45.0f / (M_PI * h6) * h2) * glm::normalize(r);
+            return (float)(-45.0f / (M_PI * h6) * h2) * r.normalize();
         }
-        return (float)(-45.0f / (M_PI * h6) * glm::pow(h1 - sqrt_r, 2)) * r / (sqrt_r + DIVISON_EPSILON);
+        return (float)(-45.0f / (M_PI * h6) * powf(h1 - sqrt_r, 2)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
     }
-    return glm::vec3(0.0f);
+    return Vec3(0.0f);
 }
 
 __device__ inline float poly6Kernel(float r2)
 {
-    if (r2 < h2)
-    {
-        return (315.0f / (64.0f * M_PI * h9)) * glm::pow(h2 - r2, 3);
-    }
-    return 0.0f;
+    return (r2 < h2) ? (315.0f / (64.0f * M_PI * h9)) * powf(h2 - r2, 3) : 0.0f;
 }
 
 __global__ void calculateDensityAndPressureKernel(Particle *particles, int numParticles)
@@ -54,8 +42,8 @@ __global__ void calculateDensityAndPressureKernel(Particle *particles, int numPa
     {
         if (i == j)
             continue;
-        glm::vec3 r = particles[j].position - particles[i].position;
-        float r2 = glm::dot(r, r);
+        Vec3 r = particles[j].position - particles[i].position;
+        float r2 = r.dot(r);
         particles[i].density += MASS * poly6Kernel(r2);
     }
     particles[i].pressure = BULK_MODULUS * fmaxf((particles[i].density - RESTING_DENSITY), 0.0f);
@@ -67,16 +55,15 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
     if (i >= numParticles)
         return;
 
-    // particles[i].force = glm::vec3(0.0f, -MASS * gravity, 0.0f); // Gravity
-
     for (int j = 0; j < numParticles; j++)
     {
         if (i == j)
             continue;
-        glm::vec3 r = particles[i].position - particles[j].position;
-        float sqrt_r = glm::length(r);
-        // particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r);                                                  // Pressure term
-        // particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+        Vec3 r = particles[i].position - particles[j].position;
+        float sqrt_r = r.length();
+        // Pressure and viscosity force calculations
+        particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r);                                                  // Pressure term
+        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
     }
 }
 
@@ -86,15 +73,17 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
     if (i >= numParticles)
         return;
 
-    // Update velocities and positions
     particles[i].velocity += dt / (particles[i].density + DIVISON_EPSILON);
-    if (glm::length(particles[i].velocity) > MAX_VELOCITY)
-    {
-        particles[i].velocity = glm::normalize(particles[i].velocity) * MAX_VELOCITY;
-    }
-    particles[i].position += dt * particles[i].velocity + 0.5f * dt * dt / (particles[i].density + DIVISON_EPSILON);
 
-    // Boundary conditions
+    if (particles[i].velocity.length() > MAX_VELOCITY)
+    {
+        particles[i].velocity = particles[i].velocity.normalize() * MAX_VELOCITY;
+    }
+
+    particles[i].position += particles[i].velocity * dt +
+                             0.5f * dt * dt / (particles[i].density + DIVISON_EPSILON);
+
+    // Boundary conditions (similar to original code)
     if (particles[i].position.x < 0.0f)
     {
         particles[i].position.x = 0.0f + EPSILON;
@@ -126,10 +115,10 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
         particles[i].velocity.z *= -COEFF_RESTITUTION;
     }
 
-    // Update colors based on particle density
+    // Color update based on density
     float density = particles[i].density;
-    particles[i].color = glm::vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
-                         glm::vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
+    particles[i].color = Vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
+                         Vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
 }
 
 __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
@@ -140,16 +129,16 @@ __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
 
     for (int j = i + 1; j < numParticles; j++)
     {
-        float dist = glm::length(particles[i].position - particles[j].position);
+        float dist = (particles[i].position - particles[j].position).length();
         if (dist < 2.0f * Radius)
         {
-            glm::vec3 normal = glm::normalize(particles[i].position - particles[j].position);
+            Vec3 normal = (particles[i].position - particles[j].position).normalize();
             particles[i].position += normal * (Radius - 0.5f * dist);
             particles[j].position -= normal * (Radius - 0.5f * dist);
 
             // Velocity restitution (elastic collision)
-            particles[i].velocity -= glm::dot(particles[i].velocity, normal) * normal * (1 + COEFF_RESTITUTION);
-            particles[j].velocity -= glm::dot(particles[j].velocity, normal) * normal * (1 + COEFF_RESTITUTION);
+            particles[i].velocity -= particles[i].velocity.dot(normal) * normal * (1 + COEFF_RESTITUTION);
+            particles[j].velocity -= particles[j].velocity.dot(normal) * normal * (1 + COEFF_RESTITUTION);
         }
     }
 }
@@ -164,7 +153,7 @@ __host__ ParticleSystem::ParticleSystem(Shader *const shader) : shader(shader)
     cudaMalloc((void **)&d_particles, NUM_INS * sizeof(Particle));
 
     // Initialize particle data
-    reset();
+    resetParticles();
 
     // Rendering
     setupVAO();
@@ -189,7 +178,7 @@ __host__ void ParticleSystem::setupVAO()
     glBindVertexArray(0);
 }
 
-__host__ void ParticleSystem::updateGPU()
+__host__ void ParticleSystem::updateParticles()
 {
     std::cout << "Position: " << h_particles[0].position.x << " " << h_particles[0].position.y << " " << h_particles[0].position.z << std::endl;
     std::cout << "velocity: " << h_particles[0].velocity.x << " " << h_particles[0].velocity.y << " " << h_particles[0].velocity.z << std::endl;
@@ -201,15 +190,15 @@ __host__ void ParticleSystem::updateGPU()
     // Launch kernels to compute densities, pressures, forces, update particles and resolve collisions
     int blockSize = 256; // 256 threads per block
     int numBlocks = (NUM_INS + blockSize - 1) / blockSize;
-    
+
     // Launch kernels
-    // cudaDeviceSynchronize();
-    // calculateDensityAndPressureKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    // cudaDeviceSynchronize();
-    // calculateForcesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    // cudaDeviceSynchronize();
-    // updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    // cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
+    calculateDensityAndPressureKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    cudaDeviceSynchronize();
+    calculateForcesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    cudaDeviceSynchronize();
+    updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    cudaDeviceSynchronize();
     resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     cudaDeviceSynchronize();
 
@@ -230,7 +219,7 @@ __host__ void ParticleSystem::updateGPU()
     glBindVertexArray(0);
 }
 
-__host__ void ParticleSystem::Draw()
+__host__ void ParticleSystem::renderParticles()
 {
     shader->use();
     shader->setMat4("modelMatrix", glm::mat4(1.0f));
@@ -240,7 +229,7 @@ __host__ void ParticleSystem::Draw()
     glBindVertexArray(0);
 }
 
-__host__ void ParticleSystem::reset()
+__host__ void ParticleSystem::resetParticles()
 {
     for (int i = 0; i < NUM_INS_DIM; i++)
     {
@@ -250,7 +239,7 @@ __host__ void ParticleSystem::reset()
             {
                 h_particles[i * NUM_INS_DIM * NUM_INS_DIM + j * NUM_INS_DIM + k] = Particle();
                 float factor = 5.0f / (NUM_INS_DIM - 1);
-                h_particles[i * NUM_INS_DIM * NUM_INS_DIM + j * NUM_INS_DIM + k].position = glm::vec3(i * factor, j * factor, k * factor);
+                h_particles[i * NUM_INS_DIM * NUM_INS_DIM + j * NUM_INS_DIM + k].position = Vec3(i * factor, j * factor, k * factor);
             }
         }
     }
@@ -265,4 +254,7 @@ ParticleSystem::~ParticleSystem()
     cudaFree(d_particles);
     // Clean up host memory
     delete[] h_particles;
+    // Clean up OpenGL resources
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
 }
