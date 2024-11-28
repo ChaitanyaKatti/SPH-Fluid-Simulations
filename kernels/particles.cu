@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include <cuda_runtime.h>
 #include <particles.cuh>
+#include <vector_operators.cuh>
 
 #include <cuda_runtime.h>
 #include <glm/glm.hpp>
@@ -10,27 +11,7 @@
 #include <config.hpp>
 #include <time.h>
 
-// Ensure all vector operations are defined as __device__
-__device__ inline glm::vec3 operator-(const glm::vec3 &v1, const glm::vec3 &v2)
-{
-    return glm::vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
-}
-
-__device__ inline glm::vec3 operator*(const glm::vec3 &v, float s)
-{
-    return glm::vec3(v.x * s, v.y * s, v.z * s);
-}
-
-__device__ inline glm::vec3 operator/(const glm::vec3 &v, float s)
-{
-    return glm::vec3(v.x / s, v.y / s, v.z / s);
-}
-
-__device__ inline glm::vec3 operator+(const glm::vec3 &v1, const glm::vec3 &v2)
-{
-    return glm::vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
-}
-
+// Kernel functions for SPH simulation
 __device__ inline float viscosityLaplacian(float sqrt_r)
 {
     if (sqrt_r < h1)
@@ -62,102 +43,96 @@ __device__ inline float poly6Kernel(float r2)
     return 0.0f;
 }
 
-// Kernel function: Calculate density and pressure
-__global__ void calculateDensityAndPressureKernel(glm::vec3 *positions, float *densities, float *pressures, int numParticles)
+__global__ void calculateDensityAndPressureKernel(Particle *particles, int numParticles)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
 
-    densities[i] = 0.0f;
+    particles[i].density = 0.0f;
     for (int j = 0; j < numParticles; j++)
     {
         if (i == j)
             continue;
-        glm::vec3 r = positions[j] - positions[i];
+        glm::vec3 r = particles[j].position - particles[i].position;
         float r2 = glm::dot(r, r);
-        densities[i] += MASS * poly6Kernel(r2);
+        particles[i].density += MASS * poly6Kernel(r2);
     }
-    pressures[i] = BULK_MODULUS * fmaxf((densities[i] - RESTING_DENSITY), 0.0f);
+    particles[i].pressure = BULK_MODULUS * fmaxf((particles[i].density - RESTING_DENSITY), 0.0f);
 }
 
-// Kernel function: Apply forces (gravity, pressure, viscosity)
-__global__ void applyForcesKernel(glm::vec3 *positions, glm::vec3 *velocities, glm::vec3 *forces,
-                                  float *pressures, float *densities, int numParticles)
+__global__ void calculateForcesKernel(Particle *particles, int numParticles)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
 
-    forces[i] = glm::vec3(0.0f, -MASS * gravity, 0.0f); // Gravity
+    // particles[i].force = glm::vec3(0.0f, -MASS * gravity, 0.0f); // Gravity
 
     for (int j = 0; j < numParticles; j++)
     {
         if (i == j)
             continue;
-        glm::vec3 r = positions[i] - positions[j];
+        glm::vec3 r = particles[i].position - particles[j].position;
         float sqrt_r = glm::length(r);
-        forces[i] += -MASS * (pressures[i] + pressures[j]) / (2.0f * densities[j] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
-        forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+        // particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r);                                                  // Pressure term
+        // particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
     }
 }
 
-// Kernel function: Update particle positions and velocities
-__global__ void updateParticlesKernel(glm::vec3 *positions, glm::vec3 *colors, glm::vec3 *velocities, glm::vec3 *forces,
-                                      float *densities, int numParticles)
+__global__ void updateParticlesKernel(Particle *particles, int numParticles)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
 
     // Update velocities and positions
-    velocities[i] += dt * forces[i] / (densities[i] + DIVISON_EPSILON);
-    if (glm::length(velocities[i]) > MAX_VELOCITY)
+    particles[i].velocity += dt / (particles[i].density + DIVISON_EPSILON);
+    if (glm::length(particles[i].velocity) > MAX_VELOCITY)
     {
-        velocities[i] = glm::normalize(velocities[i]) * MAX_VELOCITY;
+        particles[i].velocity = glm::normalize(particles[i].velocity) * MAX_VELOCITY;
     }
-    positions[i] += dt * velocities[i] + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
+    particles[i].position += dt * particles[i].velocity + 0.5f * dt * dt / (particles[i].density + DIVISON_EPSILON);
 
     // Boundary conditions
-    if (positions[i].x < 0.0f)
+    if (particles[i].position.x < 0.0f)
     {
-        positions[i].x = 0.0f + EPSILON;
-        velocities[i].x *= -COEFF_RESTITUTION;
+        particles[i].position.x = 0.0f + EPSILON;
+        particles[i].velocity.x *= -COEFF_RESTITUTION;
     }
-    if (positions[i].x > 10.0f)
+    if (particles[i].position.x > 10.0f)
     {
-        positions[i].x = 10.0f - EPSILON;
-        velocities[i].x *= -COEFF_RESTITUTION;
+        particles[i].position.x = 10.0f - EPSILON;
+        particles[i].velocity.x *= -COEFF_RESTITUTION;
     }
-    if (positions[i].y < 0.0f)
+    if (particles[i].position.y < 0.0f)
     {
-        positions[i].y = 0.0f + EPSILON;
-        velocities[i].y *= -COEFF_RESTITUTION;
+        particles[i].position.y = 0.0f + EPSILON;
+        particles[i].velocity.y *= -COEFF_RESTITUTION;
     }
-    if (positions[i].y > 10.0f)
+    if (particles[i].position.y > 10.0f)
     {
-        positions[i].y = 10.0f - EPSILON;
-        velocities[i].y *= -COEFF_RESTITUTION;
+        particles[i].position.y = 10.0f - EPSILON;
+        particles[i].velocity.y *= -COEFF_RESTITUTION;
     }
-    if (positions[i].z < 0.0f)
+    if (particles[i].position.z < 0.0f)
     {
-        positions[i].z = 0.0f + EPSILON;
-        velocities[i].z *= -COEFF_RESTITUTION;
+        particles[i].position.z = 0.0f + EPSILON;
+        particles[i].velocity.z *= -COEFF_RESTITUTION;
     }
-    if (positions[i].z > 5.0f)
+    if (particles[i].position.z > 5.0f)
     {
-        positions[i].z = 5.0f - EPSILON;
-        velocities[i].z *= -COEFF_RESTITUTION;
+        particles[i].position.z = 5.0f - EPSILON;
+        particles[i].velocity.z *= -COEFF_RESTITUTION;
     }
 
     // Update colors based on particle density
-    float density = densities[i];
-    colors[i] = glm::vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
-                glm::vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
+    float density = particles[i].density;
+    particles[i].color = glm::vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
+                         glm::vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
 }
 
-// Kernel function: Resolve particle collisions
-__global__ void resolveCollisionsKernel(glm::vec3 *positions, glm::vec3 *velocities, int numParticles)
+__global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
@@ -165,45 +140,31 @@ __global__ void resolveCollisionsKernel(glm::vec3 *positions, glm::vec3 *velocit
 
     for (int j = i + 1; j < numParticles; j++)
     {
-        float dist = glm::length(positions[i] - positions[j]);
+        float dist = glm::length(particles[i].position - particles[j].position);
         if (dist < 2.0f * Radius)
         {
-            glm::vec3 normal = glm::normalize(positions[i] - positions[j]);
-            positions[i] += normal * (Radius - 0.5f * dist);
-            positions[j] -= normal * (Radius - 0.5f * dist);
+            glm::vec3 normal = glm::normalize(particles[i].position - particles[j].position);
+            particles[i].position += normal * (Radius - 0.5f * dist);
+            particles[j].position -= normal * (Radius - 0.5f * dist);
 
             // Velocity restitution (elastic collision)
-            velocities[i] -= glm::dot(velocities[i], normal) * normal * (1 + COEFF_RESTITUTION);
-            velocities[j] -= glm::dot(velocities[j], normal) * normal * (1 + COEFF_RESTITUTION);
+            particles[i].velocity -= glm::dot(particles[i].velocity, normal) * normal * (1 + COEFF_RESTITUTION);
+            particles[j].velocity -= glm::dot(particles[j].velocity, normal) * normal * (1 + COEFF_RESTITUTION);
         }
     }
 }
 
 __host__ ParticleSystem::ParticleSystem(Shader *const shader) : shader(shader)
 {
-    // CUDA memory pointers for particle attributes
-    glm::vec3 *d_positions, *d_velocities, *d_forces;
-    float *d_densities, *d_pressures;
-
     // Initialize arrays for SPH
-    this->h_positions = new glm::vec3[NUM_INS];
-    this->h_colors = new glm::vec3[NUM_INS];
+    this->h_particles = new Particle[NUM_INS];
     std::cout << "Volume: " << pow(MASS * NUM_INS / RESTING_DENSITY, 1.0 / 3.0) << std::endl;
-    genUniformVec3Array(h_positions, NUM_INS_DIM, 5.0f);
-
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        h_colors[i] = glm::vec3(1.0f, 0.0f, 0.0f);
-    }
 
     // CUDA memory allocation for particle data
-    cudaMalloc((void **)&d_positions, NUM_INS * sizeof(glm::vec3));
-    cudaMalloc((void **)&d_velocities, NUM_INS * sizeof(glm::vec3));
-    cudaMalloc((void **)&d_forces, NUM_INS * sizeof(glm::vec3));
-    cudaMalloc((void **)&d_densities, NUM_INS * sizeof(float));
-    cudaMalloc((void **)&d_pressures, NUM_INS * sizeof(float));
+    cudaMalloc((void **)&d_particles, NUM_INS * sizeof(Particle));
 
-    cudaMemcpy(d_positions, h_positions, NUM_INS * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    // Initialize particle data
+    reset();
 
     // Rendering
     setupVAO();
@@ -218,14 +179,11 @@ __host__ void ParticleSystem::setupVAO()
 
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3) * 2, nullptr, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), h_positions);
-    glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), h_colors);
+    glBufferData(GL_ARRAY_BUFFER, NUM_INS * sizeof(Particle), h_particles, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (void *)offsetof(Particle, position));
     glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)(NUM_INS * sizeof(glm::vec3)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (void *)offsetof(Particle, color));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
@@ -233,43 +191,41 @@ __host__ void ParticleSystem::setupVAO()
 
 __host__ void ParticleSystem::updateGPU()
 {
+    std::cout << "Position: " << h_particles[0].position.x << " " << h_particles[0].position.y << " " << h_particles[0].position.z << std::endl;
+    std::cout << "velocity: " << h_particles[0].velocity.x << " " << h_particles[0].velocity.y << " " << h_particles[0].velocity.z << std::endl;
+    std::cout << "Force: " << h_particles[0].force.x << " " << h_particles[0].force.y << " " << h_particles[0].force.z << std::endl;
+    std::cout << "Density: " << h_particles[0].density << std::endl;
+    std::cout << "Pressure: " << h_particles[0].pressure << std::endl;
+    std::cout << "----------" << std::endl;
+
     // Launch kernels to compute densities, pressures, forces, update particles and resolve collisions
     int blockSize = 256; // 256 threads per block
     int numBlocks = (NUM_INS + blockSize - 1) / blockSize;
-
-    // Calculate density and pressure in parallel
-    // calculateDensityAndPressureKernel<<<numBlocks, blockSize>>>(d_positions, d_densities, d_pressures, NUM_INS);
-    // cudaDeviceSynchronize();
     
-    // cudaError_t error = cudaGetLastError();
-    // if (error != cudaSuccess)
-    // {
-    //     std::cerr << "CUDA error in updateGPU: " << cudaGetErrorString(error) << std::endl;
-    // }
-    // exit(1);
-
-    // Apply forces (pressure, viscosity, gravity) in parallel
-    // applyForcesKernel<<<numBlocks, blockSize>>>(d_positions, d_velocities, d_forces, d_pressures, d_densities, NUM_INS);
+    // Launch kernels
     // cudaDeviceSynchronize();
-
-    // // Update particles (positions, velocities)
-    // updateParticlesKernel<<<numBlocks, blockSize>>>(d_positions, d_colors, d_velocities, d_forces, d_densities, NUM_INS);
+    // calculateDensityAndPressureKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();
-
-    // // Resolve collisions between particles
-    // resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_positions, d_velocities, NUM_INS);
+    // calculateForcesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();
+    // updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    // cudaDeviceSynchronize();
+    resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    cudaDeviceSynchronize();
+
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess)
+    {
+        std::cerr << "CUDA error in updateGPU: " << cudaGetErrorString(error) << std::endl;
+    }
 
     // Copy the updated particle positions back to host
-    cudaMemcpy(h_positions, d_positions, NUM_INS * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_colors, d_colors, NUM_INS * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-
+    cudaMemcpy(h_particles, d_particles, NUM_INS * sizeof(Particle), cudaMemcpyDeviceToHost);
 
     // Update VBO for rendering
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), h_positions);
-    glBufferSubData(GL_ARRAY_BUFFER, NUM_INS * sizeof(glm::vec3), NUM_INS * sizeof(glm::vec3), h_colors);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(Particle), h_particles);
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
 }
@@ -284,61 +240,29 @@ __host__ void ParticleSystem::Draw()
     glBindVertexArray(0);
 }
 
-__host__ void ParticleSystem::setPositions(glm::vec3 *h_positions)
-{
-    this->h_positions = h_positions;
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(glm::vec3), h_positions);
-    glBindVertexArray(0);
-
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        h_colors[i] = glm::vec3(1.0f);
-    }
-
-    // Copy data to CUDA memory
-    cudaMemcpy(d_positions, h_positions, NUM_INS * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-}
-
 __host__ void ParticleSystem::reset()
 {
-    genUniformVec3Array(h_positions, NUM_INS_DIM, 5.0f);
-    setPositions(h_positions);
-}
-
-// Utility function: Generate a uniform array of glm::vec3
-__host__ void ParticleSystem::genUniformVec3Array(glm::vec3 *arr, int n, float scale)
-{
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < NUM_INS_DIM; i++)
     {
-        for (int j = 0; j < n; j++)
+        for (int j = 0; j < NUM_INS_DIM; j++)
         {
-            for (int k = 0; k < n; k++)
+            for (int k = 0; k < NUM_INS_DIM; k++)
             {
-                if (n == 1)
-                {
-                    arr[i * n * n + j * n + k] = glm::vec3(0.0f);
-                    continue;
-                }
-                float factor = scale / n - 1;
-                arr[i * n * n + j * n + k] = glm::vec3(i * factor, j * factor, k * factor);
+                h_particles[i * NUM_INS_DIM * NUM_INS_DIM + j * NUM_INS_DIM + k] = Particle();
+                float factor = 5.0f / (NUM_INS_DIM - 1);
+                h_particles[i * NUM_INS_DIM * NUM_INS_DIM + j * NUM_INS_DIM + k].position = glm::vec3(i * factor, j * factor, k * factor);
             }
         }
     }
+
+    // Copy data to host memory
+    cudaMemcpy(d_particles, h_particles, NUM_INS * sizeof(Particle), cudaMemcpyHostToDevice);
 }
 
 ParticleSystem::~ParticleSystem()
 {
     // Clean up CUDA memory
-    cudaFree(d_positions);
-    cudaFree(d_colors);
-    cudaFree(d_velocities);
-    cudaFree(d_forces);
-    cudaFree(d_densities);
-    cudaFree(d_pressures);
-
+    cudaFree(d_particles);
     // Clean up host memory
-    delete[] h_positions;
-    delete[] h_colors;
+    delete[] h_particles;
 }
