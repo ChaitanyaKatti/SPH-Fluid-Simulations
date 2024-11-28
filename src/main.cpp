@@ -6,7 +6,7 @@
 #include <imgui.h>
 
 #include <shader.hpp>
-#include <particles.hpp>
+#include <particles.cuh>
 #include <camera.hpp>
 #include <gui.hpp>
 #include <config.hpp>
@@ -44,9 +44,6 @@ int main()
     glEnable(GL_CULL_FACE);
     auto lastFrame = Clock::now();
 
-    // Initialize CUDA
-    particles.setupCUDA();
-
     // Render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -68,7 +65,7 @@ int main()
         }
 
         // Update particles using CUDA
-        particles.update(); // Call the CUDA-based update method
+        particles.updateGPU(); // Call the CUDA-based update method
 
         pointSphereShader.setCamera(camera);
 
@@ -90,9 +87,6 @@ int main()
         deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentFrame - lastFrame).count();
         lastFrame = currentFrame;
     }
-
-    // Cleanup CUDA memory
-    particles.cleanupCUDA();
 
     // Cleanup other resources
     imguiDestroy();

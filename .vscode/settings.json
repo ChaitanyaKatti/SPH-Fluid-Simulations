@@ -99,7 +99,8 @@
         "ranges": "cpp",
         "shared_mutex": "cpp",
         "span": "cpp",
-        "stdfloat": "cpp"
+        "stdfloat": "cpp",
+        "coroutine": "cpp"
     },
 
     "files.exclude": {
