@@ -16,6 +16,12 @@ if(UNIX)
     set(OpenGL_GL_PREFERENCE "GLVND")
 endif()
 
+# Enable CUDA
+enable_language(CUDA)
+
+# Include CUDA headers
+include_directories(/usr/local/cuda/include)
+
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 
@@ -73,6 +79,7 @@ file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
 
 # Add header files
 file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/include/*.hpp")
+file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/include/*.cuh")
 
 # Add executable
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS} ${IMGUI_SOURCES})

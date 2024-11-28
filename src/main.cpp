@@ -44,6 +44,9 @@ int main()
     glEnable(GL_CULL_FACE);
     auto lastFrame = Clock::now();
 
+    // Initialize CUDA
+    particles.setupCUDA();
+
     // Render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -64,7 +67,9 @@ int main()
             }
         }
 
-        particles.update(); // Update particles (now calls CUDA kernels internally)
+        // Update particles using CUDA
+        particles.update(); // Call the CUDA-based update method
+
         pointSphereShader.setCamera(camera);
 
         // Render
@@ -86,7 +91,10 @@ int main()
         lastFrame = currentFrame;
     }
 
-    // Cleanup
+    // Cleanup CUDA memory
+    particles.cleanupCUDA();
+
+    // Cleanup other resources
     imguiDestroy();
     glfwTerminate();
 
