@@ -36,7 +36,7 @@ int main()
     Camera camera = Camera(glm::vec3(5.0f, 5.0f, 10.0f), glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Meshes and Particles
-    Particles particles(&pointSphereShader);
+    ParticleSystem particles(&pointSphereShader);
 
     // OpenGL state
     glEnable(GL_DEPTH_TEST);

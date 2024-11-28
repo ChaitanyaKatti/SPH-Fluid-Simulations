@@ -4,19 +4,18 @@
 #include <shader.hpp> // Assuming you have a Shader class
 
 // Particle class definition
-class Particles
+class ParticleSystem
 {
 public:
     // Particle data
-    glm::vec3 *h_positions;
-    glm::vec3 *h_colors;
+    glm::vec3 *h_positions, *h_colors;
     
     // Shader for rendering
     Shader *shader;
 
     // Constructor and Destructor
-    Particles(Shader *const shader);
-    ~Particles();
+    ParticleSystem(Shader *const shader);
+    ~ParticleSystem();
 
     // Function declarations
     void updateGPU();

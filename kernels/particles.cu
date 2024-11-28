@@ -179,7 +179,7 @@ __global__ void resolveCollisionsKernel(glm::vec3 *positions, glm::vec3 *velocit
     }
 }
 
-__host__ Particles::Particles(Shader *const shader) : shader(shader)
+__host__ ParticleSystem::ParticleSystem(Shader *const shader) : shader(shader)
 {
     // CUDA memory pointers for particle attributes
     glm::vec3 *d_positions, *d_velocities, *d_forces;
@@ -209,7 +209,7 @@ __host__ Particles::Particles(Shader *const shader) : shader(shader)
     setupVAO();
 }
 
-__host__ void Particles::setupVAO()
+__host__ void ParticleSystem::setupVAO()
 {
     // VAO : Vertex Array Object
     glGenVertexArrays(1, &VAO);
@@ -231,7 +231,7 @@ __host__ void Particles::setupVAO()
     glBindVertexArray(0);
 }
 
-__host__ void Particles::updateGPU()
+__host__ void ParticleSystem::updateGPU()
 {
     // Launch kernels to compute densities, pressures, forces, update particles and resolve collisions
     int blockSize = 256; // 256 threads per block
@@ -274,7 +274,7 @@ __host__ void Particles::updateGPU()
     glBindVertexArray(0);
 }
 
-__host__ void Particles::Draw()
+__host__ void ParticleSystem::Draw()
 {
     shader->use();
     shader->setMat4("modelMatrix", glm::mat4(1.0f));
@@ -284,7 +284,7 @@ __host__ void Particles::Draw()
     glBindVertexArray(0);
 }
 
-__host__ void Particles::setPositions(glm::vec3 *h_positions)
+__host__ void ParticleSystem::setPositions(glm::vec3 *h_positions)
 {
     this->h_positions = h_positions;
     glBindVertexArray(VAO);
@@ -301,14 +301,14 @@ __host__ void Particles::setPositions(glm::vec3 *h_positions)
     cudaMemcpy(d_positions, h_positions, NUM_INS * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 }
 
-__host__ void Particles::reset()
+__host__ void ParticleSystem::reset()
 {
     genUniformVec3Array(h_positions, NUM_INS_DIM, 5.0f);
     setPositions(h_positions);
 }
 
 // Utility function: Generate a uniform array of glm::vec3
-__host__ void Particles::genUniformVec3Array(glm::vec3 *arr, int n, float scale)
+__host__ void ParticleSystem::genUniformVec3Array(glm::vec3 *arr, int n, float scale)
 {
     for (int i = 0; i < n; i++)
     {
@@ -328,7 +328,7 @@ __host__ void Particles::genUniformVec3Array(glm::vec3 *arr, int n, float scale)
     }
 }
 
-Particles::~Particles()
+ParticleSystem::~ParticleSystem()
 {
     // Clean up CUDA memory
     cudaFree(d_positions);
