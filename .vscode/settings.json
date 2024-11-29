@@ -104,7 +104,15 @@
         "coroutine": "cpp",
         "stacktrace": "cpp",
         "regex": "cpp",
-        "__bit_reference": "cpp"
+        "__bit_reference": "cpp",
+        "csetjmp": "cpp",
+        "barrier": "cpp",
+        "cuchar": "cpp",
+        "expected": "cpp",
+        "latch": "cpp",
+        "scoped_allocator": "cpp",
+        "spanstream": "cpp",
+        "syncstream": "cpp"
     },
 
     "files.exclude": {

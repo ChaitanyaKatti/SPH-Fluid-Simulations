@@ -65,7 +65,7 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles, flo
     particles[i].position += particles[i].velocity * dt +
                              0.5f * dt * dt / (particles[i].density);
 
-    // Boundary conditions (similar to original code)
+    // Boundary conditions
     particles[i].position.x = fminf(fmaxf(particles[i].position.x, 0.0f + EPSILON), 10.0f - EPSILON);
     particles[i].velocity.x *= (particles[i].position.x == 0.0f + EPSILON || particles[i].position.x == 10.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
 
@@ -75,21 +75,37 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles, flo
     particles[i].position.z = fminf(fmaxf(particles[i].position.z, 0.0f + EPSILON), 5.0f - EPSILON);
     particles[i].velocity.z *= (particles[i].position.z == 0.0f + EPSILON || particles[i].position.z == 5.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
 
-    // Color update based on density
-    float scale = fminf(fmaxf(particles[i].pressure / 2.0f, 0.0f), 1.0f);
-    // float scale = fminf(fmaxf(particles[i].density / RESTING_DENSITY, 0.0f), 1.0f);
-    particles[i].color = Vec3(0.0f, 1.0f, 0.0f) * (1.0f - scale) + Vec3(1.0f, 0.0f, 0.0f) * scale;
-    // Vec3 vorticity = Vec3(0.0f);
-    // for (int j = 0; j < numParticles; j++)
+    // // Cylindrical boundary conditions
+    // float radius = 4.0f;
+    // float height = 10.0f;
+    // Vec3 radial = particles[i].position - Vec3(4.0f, 0.0, 2.5f);
+    // float distFromCenter = sqrtf(radial.x * radial.x + radial.z * radial.z);
+    // if (distFromCenter > radius - EPSILON)
     // {
-    //     if (i == j)
-    //         continue;
-    //     Vec3 r = particles[j].position - particles[i].position;
-    //     float sqrt_r = r.length();
-    //     vorticity += r.cross(particles[j].velocity - particles[i].velocity) * poly6Kernel(sqrt_r);
+    //     Vec3 normal = (particles[i].position - Vec3(5.0f, 0.0, 2.5f)).normalize();
+    //     particles[i].position -= normal * (distFromCenter - (radius - EPSILON));
+    //     particles[i].velocity -= particles[i].velocity.dot(normal) * normal * (1 + COEFF_RESTITUTION);
     // }
-    // float length = 2.0f * vorticity.length();
-    // particles[i].color = Vec3(0.0f, 0.0f, 1.0f) * (1 - 2 * length) + Vec3(1.0f, 0.0f, 0.0f) * (2 * length - 1) + Vec3(0.0f, 1.0f, 0.0f) * 4.0f * length * (1 - length);
+    // particles[i].position.y = fminf(fmaxf(particles[i].position.y, 0.0f + EPSILON), height - EPSILON);
+    // particles[i].velocity.y *= (particles[i].position.y == 0.0f + EPSILON || particles[i].position.y == height - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
+
+    // // Color update based on density
+    // float scale = fminf(fmaxf(particles[i].pressure / 2.0f, 0.0f), 1.0f);
+    // float scale = fminf(fmaxf(particles[i].density / RESTING_DENSITY, 0.0f), 1.0f);
+    // particles[i].color = Vec3(0.0f, 1.0f, 0.0f) * (1.0f - scale) + Vec3(1.0f, 0.0f, 0.0f) * scale;
+   
+    // Color update based on vorticity
+    Vec3 vorticity = Vec3(0.0f);
+    for (int j = 0; j < numParticles; j++)
+    {
+        if (i == j)
+            continue;
+        Vec3 r = particles[j].position - particles[i].position;
+        float sqrt_r = r.length();
+        vorticity += r.cross(particles[j].velocity - particles[i].velocity) * poly6Kernel(sqrt_r);
+    }
+    float length = 2.0f * vorticity.length();
+    particles[i].color = Vec3(0.0f, 0.0f, 1.0f) * (1 - 2 * length) + Vec3(1.0f, 0.0f, 0.0f) * (2 * length - 1) + Vec3(0.0f, 1.0f, 0.0f) * 4.0f * length * (1 - length);
 }
 
 __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
@@ -159,7 +175,7 @@ __host__ void ParticleSystem::setupVAO()
 __host__ void ParticleSystem::updateParticles()
 {
     // Launch kernels to compute densities, pressures, forces, update particles and resolve collisions
-    int blockSize = 256; // 256 threads per block
+    int blockSize = 128; // 128 threads per block
     int numBlocks = (NUM_INS + blockSize - 1) / blockSize;
 
     // Launch kernels
@@ -171,7 +187,6 @@ __host__ void ParticleSystem::updateParticles()
     // cudaDeviceSynchronize();
     resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();
-    
     // Unmap the buffer
     // cudaGraphicsUnmapResources(1, &cudaVBOResource);
 
