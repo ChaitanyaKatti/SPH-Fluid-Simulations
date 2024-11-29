@@ -6,6 +6,7 @@
 #include <cmath>
 #include <time.h>
 
+#include <config.hpp>
 #include <shader.hpp>
 #include <vec3.hpp>
 #include <particle_system.hpp>
@@ -20,8 +21,8 @@ __global__ void calculateDensityAndPressureKernel(Particle *particles, int numPa
     particles[i].density = 0.0f;
     for (int j = 0; j < numParticles; j++)
     {
-        if (i == j)
-            continue;
+        // if (i == j)
+            // continue;
         Vec3 r = particles[j].position - particles[i].position;
         float r2 = r.dot(r);
         particles[i].density += MASS * poly6Kernel(r2);
@@ -43,18 +44,18 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
             continue;
         Vec3 r = particles[i].position - particles[j].position;
         float sqrt_r = r.length();
-        particles[i].force += -(MASS / (2.0f * particles[j].density + DIVISON_EPSILON)) * ((particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r) + (particles[i].nearPressure + particles[j].nearPressure) * spikyGradientNear(r, sqrt_r)); // Pressure term
-        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r);                                                                                               // Viscosity term
+        particles[i].force += -(MASS / (2.0f * particles[j].density)) * ((particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r) + (particles[i].nearPressure + particles[j].nearPressure) * spikyGradientNear(r, sqrt_r)); // Pressure term
+        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density) * viscosityLaplacian(sqrt_r);                                                                                               // Viscosity term
     }
 }
 
-__global__ void updateParticlesKernel(Particle *particles, int numParticles)
+__global__ void updateParticlesKernel(Particle *particles, int numParticles, float dt)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
 
-    particles[i].velocity += particles[i].force / (particles[i].density + DIVISON_EPSILON) * dt;
+    particles[i].velocity += particles[i].force / (particles[i].density) * dt;
 
     if (particles[i].velocity.length() > MAX_VELOCITY)
     {
@@ -62,7 +63,7 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
     }
 
     particles[i].position += particles[i].velocity * dt +
-                             0.5f * dt * dt / (particles[i].density + DIVISON_EPSILON);
+                             0.5f * dt * dt / (particles[i].density);
 
     // Boundary conditions (similar to original code)
     particles[i].position.x = fminf(fmaxf(particles[i].position.x, 0.0f + EPSILON), 10.0f - EPSILON);
@@ -166,7 +167,7 @@ __host__ void ParticleSystem::updateParticles()
     // cudaDeviceSynchronize();
     calculateForcesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();
-    updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
+    updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS, dt);
     // cudaDeviceSynchronize();
     resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();

@@ -75,8 +75,13 @@ void imguiNewFrame()
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(SCR_WIDTH * 0.2, 0.5 * SCR_HEIGHT), ImGuiCond_Once);
     ImGui::Begin("Control Panel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::SliderFloat("TimeStep", &dt, 0.0f, 0.05f);
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Text("Frame time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::Text("Use [WASD] to move");
+    ImGui::Text("Use Arrow Keys to look around");
+    ImGui::Text("Use [r] to reset");
+    ImGui::Text("Use [f] to pause");
     ImGui::End();
 }
 
