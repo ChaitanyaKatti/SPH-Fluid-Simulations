@@ -17,6 +17,7 @@ private:
     // Smoothed Particle Hydrodynamics
     float *densities;
     float *pressures;
+    float *nearPressures;
     glm::vec3 *forces;
     glm::vec3 *velocities;
 

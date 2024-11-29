@@ -77,6 +77,11 @@ void imguiNewFrame()
     ImGui::Begin("Control Panel", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Text("Frame time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::SliderFloat("Time Step", &dt, 0.0f, 0.05f);
+    ImGui::Text("Number of particles: %d", NUM_INS);
+    ImGui::Text("Use 'WASD' to move the camera");
+    ImGui::Text("Use Arrow Keys to look around");
+    ImGui::Text("Use 'R' to reset simulation");
     ImGui::End();
 }
 

@@ -37,22 +37,26 @@ inline float poly6Kernel(float r2)
 
 inline glm::vec3 spikyGradient(glm::vec3 r, float sqrt_r)
 {
-    if (sqrt_r < h)
+    if (sqrt_r < h1)
     {
-        if (sqrt_r < 0.0001f)
-        {
-            return (float)(-45.0f / (M_PI * h6) * h2) * glm::normalize(getRandVec3());
-        }
-        return (float)(-45.0f / (M_PI * h6) * glm::pow(h - sqrt_r, 2)) * r / (sqrt_r + DIVISON_EPSILON);
+        return (float)(-15.0f / (M_PI * h5) * (h1 - sqrt_r)) * r / sqrt_r;
+    }
+    return glm::vec3(0.0f);
+}
+inline glm::vec3 spikyGradientNear(glm::vec3 r, float sqrt_r)
+{
+    if (sqrt_r < h1)
+    {
+        return (float)(-45.0f / (M_PI * h6) * pow(h1 - sqrt_r, 2)) * r / sqrt_r;
     }
     return glm::vec3(0.0f);
 }
 
 inline float viscosityLaplacian(float sqrt_r)
 {
-    if (sqrt_r < h)
+    if (sqrt_r < h1)
     {
-        return 45.0f / (M_PI * h6) * (h - sqrt_r);
+        return 45.0f / (M_PI * h6) * (h1 - sqrt_r);
     }
     return 0.0f;
 }
@@ -71,6 +75,7 @@ Particles::Particles(Shader *const shader) : shader(shader)
     }
     this->densities = new float[NUM_INS];      // Density
     this->pressures = new float[NUM_INS];      // Pressure
+    this->nearPressures = new float[NUM_INS];  // Pressure
     this->forces = new glm::vec3[NUM_INS];     // Forces
     this->velocities = new glm::vec3[NUM_INS]; // Velocities
 
@@ -130,7 +135,8 @@ void Particles::calculateDensityAndPressure()
             float r2 = glm::dot(r, r);
             densities[i] += MASS * poly6Kernel(r2);
         }
-        pressures[i] = k * std::max((densities[i] - RESTING_DENSITY), 0.0f);
+        nearPressures[i] = BULK_MODULUS_NEAR * densities[i];
+        pressures[i] = (BULK_MODULUS * RESTING_DENSITY / 7.0f) * (pow(densities[i] / RESTING_DENSITY, 7.0f) - 1.0f);
     }
 }
 
@@ -148,17 +154,18 @@ void Particles::applyForces()
                 continue;
             glm::vec3 r = positions[i] - positions[j];
             float sqrt_r = glm::length(r);
-            forces[i] += -MASS * (pressures[i] + pressures[j]) / (2.0f * densities[j] + DIVISON_EPSILON) * spikyGradient(r, sqrt_r);  // Pressure term
-            forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j] + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+            forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r) + (nearPressures[i] + nearPressures[j]) * spikyGradientNear(r, sqrt_r)); // Pressure term
+            // forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r));                                                                        // Pressure term
+            forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j]) * viscosityLaplacian(sqrt_r);                                                                           // Viscosity term
         }
 
         // Update velocities and positions
-        velocities[i] += dt * forces[i] / (densities[i] + DIVISON_EPSILON);
+        velocities[i] += dt * forces[i] / (densities[i]);
         if (glm::length(velocities[i]) > MAX_VELOCITY)
         {
             velocities[i] = glm::normalize(velocities[i]) * MAX_VELOCITY;
         }
-        positions[i] += dt * velocities[i] + 0.5f * dt * dt * forces[i] / (densities[i] + DIVISON_EPSILON);
+        positions[i] += dt * velocities[i] + 0.5f * dt * dt * forces[i] / (densities[i]);
 
         // Apply boundary conditions
         if (positions[i].x < 0.0f)
