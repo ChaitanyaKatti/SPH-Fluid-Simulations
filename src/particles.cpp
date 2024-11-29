@@ -69,15 +69,17 @@ Particles::Particles(Shader *const shader) : shader(shader)
     std::cout << "Volume: " << pow(MASS * NUM_INS / RESTING_DENSITY, 1.0 / 3.0) << std::endl;
     genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
 
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        colors[i] = glm::vec3(1.0f);
-    }
     this->densities = new float[NUM_INS];      // Density
     this->pressures = new float[NUM_INS];      // Pressure
     this->nearPressures = new float[NUM_INS];  // Pressure
     this->forces = new glm::vec3[NUM_INS];     // Forces
     this->velocities = new glm::vec3[NUM_INS]; // Velocities
+    for (int i = 0; i < NUM_INS; i++)
+    {
+        colors[i] = glm::vec3(1.0f);
+        velocities[i] = glm::vec3(0.0f);
+        forces[i] = glm::vec3(0.0f);
+    }
 
     // Rendering
     setupVAO();
@@ -155,7 +157,6 @@ void Particles::applyForces()
             glm::vec3 r = positions[i] - positions[j];
             float sqrt_r = glm::length(r);
             forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r) + (nearPressures[i] + nearPressures[j]) * spikyGradientNear(r, sqrt_r)); // Pressure term
-            // forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r));                                                                        // Pressure term
             forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j]) * viscosityLaplacian(sqrt_r);                                                                           // Viscosity term
         }
 
@@ -270,6 +271,7 @@ Particles::~Particles()
     delete[] colors;
     delete[] densities;
     delete[] pressures;
+    delete[] nearPressures;
     delete[] forces;
     delete[] velocities;
 }
