@@ -6,7 +6,7 @@
 #include <imgui.h>
 
 #include <shader.hpp>
-#include <particle_system.cuh>
+#include <particle_system.hpp>
 #include <camera.hpp>
 #include <gui.hpp>
 #include <config.hpp>

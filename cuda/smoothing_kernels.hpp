@@ -1,5 +1,5 @@
 #include <cuda_runtime.h>
-#include <vec3.cuh>
+#include <vec3.hpp>
 #include <config.hpp>
 
 // Kernel functions for SPH simulation

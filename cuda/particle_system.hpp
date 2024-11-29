@@ -1,6 +1,7 @@
 #pragma once
 
-#include <vec3.cuh>
+#include <cuda_runtime.h>
+#include <vec3.hpp>
 #include <shader.hpp>
 
 #ifdef __CUDACC__
@@ -44,6 +45,7 @@ public:
 
 private:
     GLuint VAO, VBO;
+    cudaGraphicsResource* cudaVBOResource;
     Particle *d_particles;
     void setupVAO();
 };

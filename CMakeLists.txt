@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -Wall")
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3")
 
 project(SPH-Fluid-Simulation LANGUAGES CXX CUDA)
 
@@ -76,13 +76,13 @@ endif()
 # Add source files
 file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/kernels/*.cu"
+    "${CMAKE_CURRENT_LIST_DIR}/cuda/*.cu"
 )
 
 # Add header files
 file(GLOB_RECURSE PROJECT_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_LIST_DIR}/include/*.hpp"
-    "${CMAKE_CURRENT_LIST_DIR}/kernels/*.cuh"
+    "${CMAKE_CURRENT_LIST_DIR}/cuda/*.hpp"
 )
 
 # Add executable
@@ -92,7 +92,7 @@ add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS} ${IMGUI_SOU
 target_link_libraries(${PROJECT_NAME} PRIVATE glad glfw ${CMAKE_DL_LIBS} OpenGL::GL cuda cudart)
 
 # External include directories
-target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjloader include kernels)
+target_include_directories(${PROJECT_NAME} PRIVATE ext/stb_image ext/tinyobjloader include cuda)
 
 # Set output directories
 set_target_properties(${PROJECT_NAME} PROPERTIES

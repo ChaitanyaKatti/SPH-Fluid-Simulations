@@ -2,13 +2,14 @@
 #include <config.hpp>
 #include <bits/stdc++.h>
 #include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 #include <cmath>
 #include <time.h>
 
 #include <shader.hpp>
-#include <vec3.cuh>
-#include <particle_system.cuh>
-#include <smoothing_kernels.cuh>
+#include <vec3.hpp>
+#include <particle_system.hpp>
+#include <smoothing_kernels.hpp>
 
 __global__ void calculateDensityAndPressureKernel(Particle *particles, int numParticles)
 {
@@ -35,7 +36,7 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
-    particles[i].force = Vec3(0.0f, -gravity * MASS, 0.0f); // Gravity force
+    particles[i].force = Vec3(0.0f, -gravity * MASS, 0.0f); //+ (particles[i].position - Vec3(5, 2.5, 2.5)).cross(Vec3(0.0f, 0.05f, 0.0f)); // Gravity
     for (int j = 0; j < numParticles; j++)
     {
         if (i == j)
@@ -74,20 +75,20 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
     particles[i].velocity.z *= (particles[i].position.z == 0.0f + EPSILON || particles[i].position.z == 5.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
 
     // Color update based on density
-    float density = particles[i].density;
-    // particles[i].color = Vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
-    //  Vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
-    Vec3 vorticity = Vec3(0.0f);
-    for (int j = 0; j < numParticles; j++)
-    {
-        if (i == j)
-            continue;
-        Vec3 r = particles[j].position - particles[i].position;
-        float sqrt_r = r.length();
-        vorticity += r.cross(particles[j].velocity - particles[i].velocity) * poly6Kernel(sqrt_r);
-    }
-    float length = 2.0f * vorticity.length();
-    particles[i].color = Vec3(0.0f, 0.0f, 1.0f) * (1 - 2*length) + Vec3(1.0f, 0.0f, 0.0f) * (2*length-1) + Vec3(0.0f, 1.0f, 0.0f) * 4.0f * length * (1 - length);
+    float scale = fminf(fmaxf(particles[i].pressure / 2.0f, 0.0f), 1.0f);
+    // float scale = fminf(fmaxf(particles[i].density / RESTING_DENSITY, 0.0f), 1.0f);
+    particles[i].color = Vec3(0.0f, 1.0f, 0.0f) * (1.0f - scale) + Vec3(1.0f, 0.0f, 0.0f) * scale;
+    // Vec3 vorticity = Vec3(0.0f);
+    // for (int j = 0; j < numParticles; j++)
+    // {
+    //     if (i == j)
+    //         continue;
+    //     Vec3 r = particles[j].position - particles[i].position;
+    //     float sqrt_r = r.length();
+    //     vorticity += r.cross(particles[j].velocity - particles[i].velocity) * poly6Kernel(sqrt_r);
+    // }
+    // float length = 2.0f * vorticity.length();
+    // particles[i].color = Vec3(0.0f, 0.0f, 1.0f) * (1 - 2 * length) + Vec3(1.0f, 0.0f, 0.0f) * (2 * length - 1) + Vec3(0.0f, 1.0f, 0.0f) * 4.0f * length * (1 - length);
 }
 
 __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
@@ -132,14 +133,15 @@ __host__ ParticleSystem::ParticleSystem(Shader *const shader) : shader(shader)
 
 __host__ void ParticleSystem::setupVAO()
 {
-    // VAO : Vertex Array Object
-    glGenVertexArrays(1, &VAO);
-    // VBO : Vertex Buffer Object
-    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, &VAO); // VAO : Vertex Array Object
+    glGenBuffers(1, &VBO);      // VBO : Vertex Buffer Object
 
     glBindVertexArray(VAO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, NUM_INS * sizeof(Particle), h_particles, GL_DYNAMIC_DRAW);
+
+    // Register VBO with CUDA
+    cudaGraphicsGLRegisterBuffer(&cudaVBOResource, VBO, cudaGraphicsMapFlagsNone);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (void *)offsetof(Particle, position));
     glEnableVertexAttribArray(0);
@@ -147,6 +149,10 @@ __host__ void ParticleSystem::setupVAO()
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
+    // Map OpenGL buffer for CUDA
+    size_t size;
+    cudaGraphicsMapResources(1, &cudaVBOResource);
+    cudaGraphicsResourceGetMappedPointer((void **)&d_particles, &size, cudaVBOResource);
 }
 
 __host__ void ParticleSystem::updateParticles()
@@ -164,16 +170,19 @@ __host__ void ParticleSystem::updateParticles()
     // cudaDeviceSynchronize();
     resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
     // cudaDeviceSynchronize();
+    
+    // Unmap the buffer
+    // cudaGraphicsUnmapResources(1, &cudaVBOResource);
 
-    // Copy the updated particle positions back to host
-    cudaMemcpy(h_particles, d_particles, NUM_INS * sizeof(Particle), cudaMemcpyDeviceToHost);
+    // // Copy the updated particle positions back to host
+    // cudaMemcpy(h_particles, d_particles, NUM_INS * sizeof(Particle), cudaMemcpyDeviceToHost);
 
-    // Update VBO for rendering
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(Particle), h_particles);
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);
+    // // Update VBO for rendering
+    // glBindVertexArray(VAO);
+    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // glBufferSubData(GL_ARRAY_BUFFER, 0, NUM_INS * sizeof(Particle), h_particles);
+    // glEnableVertexAttribArray(0);
+    // glBindVertexArray(0);
 }
 
 __host__ void ParticleSystem::renderParticles()
@@ -207,11 +216,11 @@ __host__ void ParticleSystem::resetParticles()
 
 ParticleSystem::~ParticleSystem()
 {
-    // Clean up CUDA memory
-    cudaFree(d_particles);
-    // Clean up host memory
-    delete[] h_particles;
-    // Clean up OpenGL resources
+    // Clean up device memory
+    // cudaFree(d_particles);
+    cudaGraphicsUnregisterResource(cudaVBOResource);
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    // Clean up host memory
+    delete[] h_particles;
 }
