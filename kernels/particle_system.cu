@@ -54,16 +54,15 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numParticles)
         return;
-
+    particles[i].force = Vec3(0.0f, -gravity * MASS, 0.0f); // Gravity force
     for (int j = 0; j < numParticles; j++)
     {
         if (i == j)
             continue;
         Vec3 r = particles[i].position - particles[j].position;
         float sqrt_r = r.length();
-        // Pressure and viscosity force calculations
-        particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r);                                                  // Pressure term
-        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r); // Viscosity term
+        particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) / (2.0f * particles[j].density + DIVISON_EPSILON) * spikyGradient(r, sqrt_r); // Pressure term                                               // Pressure term
+        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r);  // Viscosity term
     }
 }
 
@@ -73,7 +72,7 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
     if (i >= numParticles)
         return;
 
-    particles[i].velocity += dt / (particles[i].density + DIVISON_EPSILON);
+    particles[i].velocity += particles[i].force / (particles[i].density + DIVISON_EPSILON) * dt;
 
     if (particles[i].velocity.length() > MAX_VELOCITY)
     {
@@ -127,8 +126,10 @@ __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
     if (i >= numParticles)
         return;
 
-    for (int j = i + 1; j < numParticles; j++)
+    for (int j = 0; j < numParticles; j++)
     {
+        if (i == j)
+            continue;
         float dist = (particles[i].position - particles[j].position).length();
         if (dist < 2.0f * Radius)
         {
@@ -180,33 +181,19 @@ __host__ void ParticleSystem::setupVAO()
 
 __host__ void ParticleSystem::updateParticles()
 {
-    std::cout << "Position: " << h_particles[0].position.x << " " << h_particles[0].position.y << " " << h_particles[0].position.z << std::endl;
-    std::cout << "velocity: " << h_particles[0].velocity.x << " " << h_particles[0].velocity.y << " " << h_particles[0].velocity.z << std::endl;
-    std::cout << "Force: " << h_particles[0].force.x << " " << h_particles[0].force.y << " " << h_particles[0].force.z << std::endl;
-    std::cout << "Density: " << h_particles[0].density << std::endl;
-    std::cout << "Pressure: " << h_particles[0].pressure << std::endl;
-    std::cout << "----------" << std::endl;
-
     // Launch kernels to compute densities, pressures, forces, update particles and resolve collisions
     int blockSize = 256; // 256 threads per block
     int numBlocks = (NUM_INS + blockSize - 1) / blockSize;
 
     // Launch kernels
-    cudaDeviceSynchronize();
     calculateDensityAndPressureKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
     calculateForcesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
     updateParticlesKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
     resolveCollisionsKernel<<<numBlocks, blockSize>>>(d_particles, NUM_INS);
-    cudaDeviceSynchronize();
-
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-    {
-        std::cerr << "CUDA error in updateGPU: " << cudaGetErrorString(error) << std::endl;
-    }
+    // cudaDeviceSynchronize();
 
     // Copy the updated particle positions back to host
     cudaMemcpy(h_particles, d_particles, NUM_INS * sizeof(Particle), cudaMemcpyDeviceToHost);
