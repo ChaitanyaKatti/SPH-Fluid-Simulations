@@ -28,9 +28,9 @@ int main()
     ImGuiIO &io = ImGui::GetIO();
 
     // Shaders
-    Shader pointSphereShader(ASSETS_PATH "shaders/geometryPoint/pointSphere.vs",
-                             ASSETS_PATH "shaders/geometryPoint/pointSphere.fs",
-                             ASSETS_PATH "shaders/geometryPoint/pointSphere.gs");
+    Shader pointSphereShader(ASSETS_PATH "shaders/pointSphere/pointSphere.vs",
+                             ASSETS_PATH "shaders/pointSphere/pointSphere.fs",
+                             ASSETS_PATH "shaders/pointSphere/pointSphere.gs");
 
     // Camera
     Camera camera = Camera(glm::vec3(5.0f, 5.0f, 10.0f), glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
