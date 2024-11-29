@@ -18,10 +18,10 @@ inline float dt = 0.01f;       // Time step
 #define mu 0.1f                // Viscosity
 #define g 9.81f                // Gravity
 #define EPSILON 0.0001f        // Boundary epsilon
-#define COEFF_RESTITUTION 0.8f // Restitution coefficient
+#define COEFF_RESTITUTION 0.0f // Restitution coefficient
 #define MAX_VELOCITY 100.0f    // Maximum velocity of particles
 #define Radius 0.05f           // Particle radius for collision detection
-#define HashTableSize 250
+#define HashTableSize 300
 
 // Window size
 inline unsigned int SCR_WIDTH = 1200;

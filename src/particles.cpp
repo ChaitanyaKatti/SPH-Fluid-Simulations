@@ -8,12 +8,8 @@ inline glm::vec3 getRandVec3()
     return glm::vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 }
 
-void genUniformVec3Array(glm::vec3 *arr, int n, float scale = 1.0f)
+void genUniformVec3Array(glm::vec3 *arr, int n, float scale = 5.0f)
 {
-    if (n <= 0)
-    {
-        return;
-    }
     for (int i = 0; i < n; i++)
     {
         for (int j = 0; j < n; j++)
@@ -65,6 +61,9 @@ inline float viscosityLaplacian(float sqrt_r)
 inline int Particles::hash(glm::vec3 p)
 {
     int hash = (int(p.x / h1)) + (int(p.y / h1) * 10) + (int(p.z / h1) * 10 * 5);
+    // if(hash < 0 || hash > HashTableSize){
+    //     std::cout << "Hash out of bounds: " << hash << std::endl;
+    // }
     hash = abs(hash) % HashTableSize;
     return hash;
 }
@@ -305,13 +304,21 @@ void Particles::resolveCollisions()
                         if (i == neighbor)
                             continue;
                         float dist = glm::length(positions[i] - positions[neighbor]);
-                        if (dist < 2.0f * Radius)
+                        if (dist < 2.0f*Radius && dist > 0.001f) // Ensure they are overlapping and avoid division by zero
                         {
                             glm::vec3 normal = glm::normalize(positions[i] - positions[neighbor]);
-                            positions[i] += normal * (Radius - 0.5f * dist);
-                            positions[neighbor] -= normal * (Radius - 0.5f * dist);
-                            velocities[i] -= glm::dot(velocities[i], normal) * normal * (1 + COEFF_RESTITUTION);
-                            velocities[neighbor] -= glm::dot(velocities[neighbor], normal) * normal * (1 + COEFF_RESTITUTION);
+                            float overlap = 2.0f*Radius - dist;
+
+                            // Resolve overlap by adjusting positions
+                            positions[i] += normal * (0.5f * overlap);
+                            positions[neighbor] -= normal * (0.5f * overlap);
+
+                            // Reflect velocities based on collision normal
+                            glm::vec3 relativeVelocity = velocities[i] - velocities[neighbor];
+                            float impulse = (-(1 + COEFF_RESTITUTION) * glm::dot(relativeVelocity, normal));
+
+                            velocities[i] += impulse * normal;
+                            velocities[neighbor] -= impulse * normal;
                         }
                     }
                 }
