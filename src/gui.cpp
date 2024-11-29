@@ -78,6 +78,7 @@ void imguiNewFrame()
     ImGui::SliderFloat("TimeStep", &dt, 0.0f, 0.05f);
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Text("Frame time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
+    ImGui::Text("Number of particles: %d", NUM_INS);
     ImGui::Text("Use [WASD] to move");
     ImGui::Text("Use Arrow Keys to look around");
     ImGui::Text("Use [r] to reset");
