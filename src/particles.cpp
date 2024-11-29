@@ -76,10 +76,6 @@ Particles::Particles(Shader *const shader) : shader(shader)
     std::cout << "Volume: " << pow(MASS * NUM_INS / RESTING_DENSITY, 1.0 / 3.0) << std::endl;
     genUniformVec3Array(positions, NUM_INS_DIM, 5.0f);
 
-    for (int i = 0; i < NUM_INS; i++)
-    {
-        colors[i] = glm::vec3(1.0f);
-    }
     this->densities = new float[NUM_INS];      // Density
     this->pressures = new float[NUM_INS];      // Pressure
     this->nearPressures = new float[NUM_INS];  // Pressure
@@ -88,6 +84,12 @@ Particles::Particles(Shader *const shader) : shader(shader)
     this->startIndex = new int[HashTableSize];
     this->stopIndex = new int[HashTableSize];
     this->indexArray = new int[NUM_INS];
+    for (int i = 0; i < NUM_INS; i++)
+    {
+        colors[i] = glm::vec3(1.0f);
+        velocities[i] = glm::vec3(0.0f);
+        forces[i] = glm::vec3(0.0f);
+    }
 
     // Rendering
     setupVAO();
