@@ -43,6 +43,7 @@ inline glm::vec3 spikyGradient(glm::vec3 r, float sqrt_r)
     }
     return glm::vec3(0.0f);
 }
+
 inline glm::vec3 spikyGradientNear(glm::vec3 r, float sqrt_r)
 {
     if (sqrt_r < h1)
@@ -59,6 +60,13 @@ inline float viscosityLaplacian(float sqrt_r)
         return 45.0f / (M_PI * h6) * (h1 - sqrt_r);
     }
     return 0.0f;
+}
+
+inline int Particles::hash(glm::vec3 p)
+{
+    int hash = (int(p.x / h1)) + (int(p.y / h1) * 10) + (int(p.z / h1) * 10 * 5);
+    hash = abs(hash) % HashTableSize;
+    return hash;
 }
 
 Particles::Particles(Shader *const shader) : shader(shader)
@@ -78,6 +86,9 @@ Particles::Particles(Shader *const shader) : shader(shader)
     this->nearPressures = new float[NUM_INS];  // Pressure
     this->forces = new glm::vec3[NUM_INS];     // Forces
     this->velocities = new glm::vec3[NUM_INS]; // Velocities
+    this->startIndex = new int[HashTableSize];
+    this->stopIndex = new int[HashTableSize];
+    this->indexArray = new int[NUM_INS];
 
     // Rendering
     setupVAO();
@@ -107,6 +118,7 @@ void Particles::setupVAO()
 
 void Particles::update()
 {
+    updateHash();
     calculateDensityAndPressure();
     applyForces();
     resolveCollisions();
@@ -120,20 +132,67 @@ void Particles::update()
     glBindVertexArray(0);
 }
 
+void Particles::updateHash()
+{
+    // Initialize all arrays to zero
+    std::fill(startIndex, startIndex + HashTableSize, 0);
+    std::fill(stopIndex, stopIndex + HashTableSize, 0);
+    std::fill(indexArray, indexArray + NUM_INS, 0);
+
+    // For each particle, find its cell Id and add to count array
+    // #pragma omp parallel for shared(stopIndex)
+    for (int i = 0; i < NUM_INS; i++)
+    {
+        int cellId = hash(positions[i]);
+        stopIndex[cellId]++;
+    }
+
+    // Do partial sum and store in startIndex and stopIndex
+    for (int i = 1; i < HashTableSize; i++)
+    {
+        stopIndex[i] += stopIndex[i - 1];
+    }
+    // copy to start index
+    std::copy_n(stopIndex, HashTableSize, startIndex);
+
+    // For each particle, find its cell Id and add
+    // #pragma omp parallel for shared(startIndex)
+    for (int i = 0; i < NUM_INS; i++)
+    {
+        int cellId = hash(positions[i]);
+        startIndex[cellId]--;
+        indexArray[startIndex[cellId]] = i;
+    }
+}
+
 void Particles::calculateDensityAndPressure()
 {
-#pragma omp parallel for shared(densities, pressures)
-    /// N^2 algorithm
+#pragma omp parallel for
     for (int i = 0; i < NUM_INS; i++)
     {
         densities[i] = 0.0f;
-        for (int j = 0; j < NUM_INS; j++)
+        for (int x = -1; x <= 1; x++)
         {
-            if (i == j)
+            if ((positions[i].x < 1 && x == -1) || (positions[i].x > 9 && x == 1))
                 continue;
-            glm::vec3 r = positions[j] - positions[i];
-            float r2 = glm::dot(r, r);
-            densities[i] += MASS * poly6Kernel(r2);
+            for (int y = -1; y <= 1; y++)
+            {
+                if ((positions[i].y < 1 && y == -1) || (positions[i].y > 4 && y == 1))
+                    continue;
+                for (int z = -1; z <= 1; z++)
+                {
+                    if ((positions[i].z < 1 && z == -1) || (positions[i].z > 4 && z == 1))
+                        continue;
+                    int cellId = hash(positions[i] + glm::vec3(x, y, z) * h1);
+                    for (int j = startIndex[cellId]; j < stopIndex[cellId]; j++)
+                    {
+                        int neighbor = indexArray[j];
+                        glm::vec3 r = positions[neighbor] - positions[i];
+                        float r2 = glm::dot(r, r);
+                        densities[i] += MASS * poly6Kernel(r2);
+                    }
+                }
+            }
         }
         nearPressures[i] = BULK_MODULUS_NEAR * densities[i];
         pressures[i] = (BULK_MODULUS * RESTING_DENSITY / 7.0f) * (pow(densities[i] / RESTING_DENSITY, 7.0f) - 1.0f);
@@ -142,21 +201,36 @@ void Particles::calculateDensityAndPressure()
 
 void Particles::applyForces()
 {
-    // N^2 algorithm
 #pragma omp parallel for
     for (int i = 0; i < NUM_INS; i++)
     {
         forces[i] = glm::vec3(0.0f, -MASS * g, 0.0f); // Gravity
 
-        for (int j = 0; j < NUM_INS; j++)
+        for (int x = -1; x <= 1; x++)
         {
-            if (i == j)
+            if ((positions[i].x < 1 && x == -1) || (positions[i].x > 9 && x == 1))
                 continue;
-            glm::vec3 r = positions[i] - positions[j];
-            float sqrt_r = glm::length(r);
-            forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r) + (nearPressures[i] + nearPressures[j]) * spikyGradientNear(r, sqrt_r)); // Pressure term
-            // forces[i] += -(MASS / (2.0f * densities[j])) * ((pressures[i] + pressures[j]) * spikyGradient(r, sqrt_r));                                                                        // Pressure term
-            forces[i] += mu * MASS * (velocities[j] - velocities[i]) / (densities[j]) * viscosityLaplacian(sqrt_r);                                                                           // Viscosity term
+            for (int y = -1; y <= 1; y++)
+            {
+                if ((positions[i].y < 1 && y == -1) || (positions[i].y > 4 && y == 1))
+                    continue;
+                for (int z = -1; z <= 1; z++)
+                {
+                    if ((positions[i].z < 1 && z == -1) || (positions[i].z > 4 && z == 1))
+                        continue;
+                    int cellId = hash(positions[i] + glm::vec3(x, y, z) * h1);
+                    for (int j = startIndex[cellId]; j < stopIndex[cellId]; j++)
+                    {
+                        int neighbor = indexArray[j];
+                        if (i == neighbor)
+                            continue;
+                        glm::vec3 r = positions[neighbor] - positions[i];
+                        float sqrt_r = glm::length(r);
+                        forces[i] += (MASS / (2.0f * densities[neighbor])) * ((pressures[i] + pressures[neighbor]) * spikyGradient(r, sqrt_r) + (nearPressures[i] + nearPressures[neighbor]) * spikyGradientNear(r, sqrt_r)); // Pressure term
+                        forces[i] += mu * MASS * (velocities[neighbor] - velocities[i]) / (densities[neighbor]) * viscosityLaplacian(sqrt_r);                                                                                  // Viscosity term
+                    }
+                }
+            }
         }
 
         // Update velocities and positions
@@ -183,9 +257,9 @@ void Particles::applyForces()
             positions[i].y = EPSILON;
             velocities[i].y *= -COEFF_RESTITUTION;
         }
-        else if (positions[i].y > 10.0f)
+        else if (positions[i].y > 5.0f)
         {
-            positions[i].y = 10.0f - EPSILON;
+            positions[i].y = 5.0f - EPSILON;
             velocities[i].y *= -COEFF_RESTITUTION;
         }
         if (positions[i].z < 0.0f)
@@ -209,20 +283,38 @@ void Particles::applyForces()
 
 void Particles::resolveCollisions()
 {
-    // Particle-Particle collisions
+#pragma omp parallel for
     for (int i = 0; i < NUM_INS; i++)
     {
-#pragma omp parallel for
-        for (int j = i + 1; j < NUM_INS; j++)
+        for(int x = -1; x <= 1; x++)
         {
-            float dist = glm::length(positions[i] - positions[j]);
-            if (dist < 2.0f * Radius)
+            if ((positions[i].x < 1 && x == -1) || (positions[i].x > 9 && x == 1))
+                continue;
+            for (int y = -1; y <= 1; y++)
             {
-                glm::vec3 normal = glm::normalize(positions[i] - positions[j]);
-                positions[i] += normal * (Radius - 0.5f * dist);
-                positions[j] -= normal * (Radius - 0.5f * dist);
-                velocities[i] -= glm::dot(velocities[i], normal) * normal * (1 + COEFF_RESTITUTION);
-                velocities[j] -= glm::dot(velocities[j], normal) * normal * (1 + COEFF_RESTITUTION);
+                if ((positions[i].y < 1 && y == -1) || (positions[i].y > 4 && y == 1))
+                    continue;
+                for (int z = -1; z <= 1; z++)
+                {
+                    if ((positions[i].z < 1 && z == -1) || (positions[i].z > 4 && z == 1))
+                        continue;
+                    int cellId = hash(positions[i] + glm::vec3(x, y, z) * h1);
+                    for (int j = startIndex[cellId]; j < stopIndex[cellId]; j++)
+                    {
+                        int neighbor = indexArray[j];
+                        if (i == neighbor)
+                            continue;
+                        float dist = glm::length(positions[i] - positions[neighbor]);
+                        if (dist < 2.0f * Radius)
+                        {
+                            glm::vec3 normal = glm::normalize(positions[i] - positions[neighbor]);
+                            positions[i] += normal * (Radius - 0.5f * dist);
+                            positions[neighbor] -= normal * (Radius - 0.5f * dist);
+                            velocities[i] -= glm::dot(velocities[i], normal) * normal * (1 + COEFF_RESTITUTION);
+                            velocities[neighbor] -= glm::dot(velocities[neighbor], normal) * normal * (1 + COEFF_RESTITUTION);
+                        }
+                    }
+                }
             }
         }
     }

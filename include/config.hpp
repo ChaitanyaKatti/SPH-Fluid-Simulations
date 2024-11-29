@@ -21,6 +21,7 @@ inline float dt = 0.01f;        // Time step
 #define COEFF_RESTITUTION 0.8f  // Restitution coefficient
 #define MAX_VELOCITY 100.0f     // Maximum velocity of particles
 #define Radius 0.05f            // Particle radius for collision detection
+#define HashTableSize 250
 
 // Window size
 inline unsigned int SCR_WIDTH = 1200;
