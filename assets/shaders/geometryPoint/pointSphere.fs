@@ -33,6 +33,8 @@ void main() {
     shade += 0.1 * pow(max(0.0, dot(halfDir, modelNormal)), 32.0);
     shade += 0.3;
     fragColor = vec4(fColor*shade,  1.0);
+    // Gamma correction
+    fragColor = pow(fragColor, vec4(1.0/2.2));
     
     // Write depth to depth buffer by calulating Normalized Device Coordinates
     vec4 NDC = camera.projMatrix * camera.viewMatrix * vec4(fPos + pointSize * modelNormal, 1.0);

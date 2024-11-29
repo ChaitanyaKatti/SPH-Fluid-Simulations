@@ -1,6 +1,6 @@
 #pragma once
 
-#include <math_vector.cuh>
+#include <vec3.cuh>
 #include <shader.hpp>
 
 #ifdef __CUDACC__

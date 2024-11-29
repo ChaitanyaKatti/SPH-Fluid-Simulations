@@ -2,37 +2,13 @@
 #include <config.hpp>
 #include <bits/stdc++.h>
 #include <cuda_runtime.h>
-#include <math_vector.cuh>
-#include <particle_system.cuh>
 #include <cmath>
 #include <time.h>
 
-// Kernel functions for SPH simulation
-
-__device__ inline float poly6Kernel(float r2)
-{
-    return (r2 < h2) ? (315.0f / (64.0f * M_PI * h9)) * powf(h2 - r2, 3) : 0.0f;
-}
-__device__ inline Vec3 spikyGradient(Vec3 r, float sqrt_r)
-{ // Gradient of Spiky power 2 kernel 
-    if (sqrt_r < h1)
-    {
-        return (float)(-15.0f / (M_PI * h5) * (h1 - sqrt_r)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
-    }
-    return Vec3(0.0f);
-}
-__device__ inline Vec3 spikyGradientNear(Vec3 r, float sqrt_r)
-{ // Gradient of Spiky power 3 kernel
-    if (sqrt_r < h1)
-    {
-        return (float)(-45.0f / (M_PI * h6) * powf(h1 - sqrt_r, 2)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
-    }
-    return Vec3(0.0f);
-}
-__device__ inline float viscosityLaplacian(float sqrt_r)
-{
-    return (sqrt_r < h1) ? 45.0f / (M_PI * h6) * (h1 - sqrt_r) : 0.0f;
-}
+#include <shader.hpp>
+#include <vec3.cuh>
+#include <particle_system.cuh>
+#include <smoothing_kernels.cuh>
 
 __global__ void calculateDensityAndPressureKernel(Particle *particles, int numParticles)
 {
@@ -51,7 +27,7 @@ __global__ void calculateDensityAndPressureKernel(Particle *particles, int numPa
     }
     // particles[i].pressure = BULK_MODULUS * fmaxf((particles[i].density - RESTING_DENSITY), 0.0f); // Desburn and Cani
     particles[i].nearPressure = BULK_MODULUS_NEAR * particles[i].density;
-    particles[i].pressure = (BULK_MODULUS * RESTING_DENSITY / 7.0f) * (powf(particles[i].density / RESTING_DENSITY, 7.0f) - 1.0f); // Monaghan 
+    particles[i].pressure = (BULK_MODULUS * RESTING_DENSITY / 7.0f) * (powf(particles[i].density / RESTING_DENSITY, 7.0f) - 1.0f); // Monaghan
 }
 
 __global__ void calculateForcesKernel(Particle *particles, int numParticles)
@@ -66,8 +42,8 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
             continue;
         Vec3 r = particles[i].position - particles[j].position;
         float sqrt_r = r.length();
-        particles[i].force += -(MASS / (2.0f * particles[j].density + DIVISON_EPSILON)) * ( (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r) + (particles[i].nearPressure + particles[j].nearPressure) * spikyGradientNear(r, sqrt_r)); // Pressure term
-        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r);  // Viscosity term
+        particles[i].force += -(MASS / (2.0f * particles[j].density + DIVISON_EPSILON)) * ((particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r) + (particles[i].nearPressure + particles[j].nearPressure) * spikyGradientNear(r, sqrt_r)); // Pressure term
+        particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r);                                                                                               // Viscosity term
     }
 }
 
@@ -88,41 +64,30 @@ __global__ void updateParticlesKernel(Particle *particles, int numParticles)
                              0.5f * dt * dt / (particles[i].density + DIVISON_EPSILON);
 
     // Boundary conditions (similar to original code)
-    if (particles[i].position.x < 0.0f)
-    {
-        particles[i].position.x = 0.0f + EPSILON;
-        particles[i].velocity.x *= -COEFF_RESTITUTION;
-    }
-    if (particles[i].position.x > 10.0f)
-    {
-        particles[i].position.x = 10.0f - EPSILON;
-        particles[i].velocity.x *= -COEFF_RESTITUTION;
-    }
-    if (particles[i].position.y < 0.0f)
-    {
-        particles[i].position.y = 0.0f + EPSILON;
-        particles[i].velocity.y *= -COEFF_RESTITUTION;
-    }
-    if (particles[i].position.y > 10.0f)
-    {
-        particles[i].position.y = 10.0f - EPSILON;
-        particles[i].velocity.y *= -COEFF_RESTITUTION;
-    }
-    if (particles[i].position.z < 0.0f)
-    {
-        particles[i].position.z = 0.0f + EPSILON;
-        particles[i].velocity.z *= -COEFF_RESTITUTION;
-    }
-    if (particles[i].position.z > 5.0f)
-    {
-        particles[i].position.z = 5.0f - EPSILON;
-        particles[i].velocity.z *= -COEFF_RESTITUTION;
-    }
+    particles[i].position.x = fminf(fmaxf(particles[i].position.x, 0.0f + EPSILON), 10.0f - EPSILON);
+    particles[i].velocity.x *= (particles[i].position.x == 0.0f + EPSILON || particles[i].position.x == 10.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
+
+    particles[i].position.y = fminf(fmaxf(particles[i].position.y, 0.0f + EPSILON), 10.0f - EPSILON);
+    particles[i].velocity.y *= (particles[i].position.y == 0.0f + EPSILON || particles[i].position.y == 10.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
+
+    particles[i].position.z = fminf(fmaxf(particles[i].position.z, 0.0f + EPSILON), 5.0f - EPSILON);
+    particles[i].velocity.z *= (particles[i].position.z == 0.0f + EPSILON || particles[i].position.z == 5.0f - EPSILON) ? -COEFF_RESTITUTION : 1.0f;
 
     // Color update based on density
     float density = particles[i].density;
-    particles[i].color = Vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
-                         Vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
+    // particles[i].color = Vec3(1.0f, 0.0f, 0.0f) * (1.0f - fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f)) +
+    //  Vec3(0.0f, 1.0f, 0.0f) * fminf(fmaxf(density / RESTING_DENSITY, 0.0f), 1.0f);
+    Vec3 vorticity = Vec3(0.0f);
+    for (int j = 0; j < numParticles; j++)
+    {
+        if (i == j)
+            continue;
+        Vec3 r = particles[j].position - particles[i].position;
+        float sqrt_r = r.length();
+        vorticity += r.cross(particles[j].velocity - particles[i].velocity) * poly6Kernel(sqrt_r);
+    }
+    float length = 2.0f * vorticity.length();
+    particles[i].color = Vec3(0.0f, 0.0f, 1.0f) * (1 - 2*length) + Vec3(1.0f, 0.0f, 0.0f) * (2*length-1) + Vec3(0.0f, 1.0f, 0.0f) * 4.0f * length * (1 - length);
 }
 
 __global__ void resolveCollisionsKernel(Particle *particles, int numParticles)
