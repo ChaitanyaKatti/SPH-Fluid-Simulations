@@ -8,27 +8,30 @@
 #include <time.h>
 
 // Kernel functions for SPH simulation
-__device__ inline float viscosityLaplacian(float sqrt_r)
-{
-    return (sqrt_r < h1) ? 45.0f / (M_PI * h6) * (h1 - sqrt_r) : 0.0f;
-}
-
-__device__ inline Vec3 spikyGradient(Vec3 r, float sqrt_r)
-{
-    if (sqrt_r < h1)
-    {
-        if (sqrt_r < 0.0001f)
-        {
-            return (float)(-45.0f / (M_PI * h6) * h2) * r.normalize();
-        }
-        return (float)(-45.0f / (M_PI * h6) * powf(h1 - sqrt_r, 2)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
-    }
-    return Vec3(0.0f);
-}
 
 __device__ inline float poly6Kernel(float r2)
 {
     return (r2 < h2) ? (315.0f / (64.0f * M_PI * h9)) * powf(h2 - r2, 3) : 0.0f;
+}
+__device__ inline Vec3 spikyGradient(Vec3 r, float sqrt_r)
+{ // Gradient of Spiky power 2 kernel 
+    if (sqrt_r < h1)
+    {
+        return (float)(-15.0f / (M_PI * h5) * (h1 - sqrt_r)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
+    }
+    return Vec3(0.0f);
+}
+__device__ inline Vec3 spikyGradientNear(Vec3 r, float sqrt_r)
+{ // Gradient of Spiky power 3 kernel
+    if (sqrt_r < h1)
+    {
+        return (float)(-45.0f / (M_PI * h6) * powf(h1 - sqrt_r, 2)) * r * (1.0f / (sqrt_r + DIVISON_EPSILON));
+    }
+    return Vec3(0.0f);
+}
+__device__ inline float viscosityLaplacian(float sqrt_r)
+{
+    return (sqrt_r < h1) ? 45.0f / (M_PI * h6) * (h1 - sqrt_r) : 0.0f;
 }
 
 __global__ void calculateDensityAndPressureKernel(Particle *particles, int numParticles)
@@ -46,7 +49,9 @@ __global__ void calculateDensityAndPressureKernel(Particle *particles, int numPa
         float r2 = r.dot(r);
         particles[i].density += MASS * poly6Kernel(r2);
     }
-    particles[i].pressure = BULK_MODULUS * fmaxf((particles[i].density - RESTING_DENSITY), 0.0f);
+    // particles[i].pressure = BULK_MODULUS * fmaxf((particles[i].density - RESTING_DENSITY), 0.0f); // Desburn and Cani
+    particles[i].nearPressure = BULK_MODULUS_NEAR * particles[i].density;
+    particles[i].pressure = (BULK_MODULUS * RESTING_DENSITY / 7.0f) * (powf(particles[i].density / RESTING_DENSITY, 7.0f) - 1.0f); // Monaghan 
 }
 
 __global__ void calculateForcesKernel(Particle *particles, int numParticles)
@@ -61,7 +66,7 @@ __global__ void calculateForcesKernel(Particle *particles, int numParticles)
             continue;
         Vec3 r = particles[i].position - particles[j].position;
         float sqrt_r = r.length();
-        particles[i].force += -MASS * (particles[i].pressure + particles[j].pressure) / (2.0f * particles[j].density + DIVISON_EPSILON) * spikyGradient(r, sqrt_r); // Pressure term                                               // Pressure term
+        particles[i].force += -(MASS / (2.0f * particles[j].density + DIVISON_EPSILON)) * ( (particles[i].pressure + particles[j].pressure) * spikyGradient(r, sqrt_r) + (particles[i].nearPressure + particles[j].nearPressure) * spikyGradientNear(r, sqrt_r)); // Pressure term
         particles[i].force += mu * MASS * (particles[j].velocity - particles[i].velocity) / (particles[j].density + DIVISON_EPSILON) * viscosityLaplacian(sqrt_r);  // Viscosity term
     }
 }

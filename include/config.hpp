@@ -10,9 +10,11 @@
 #define dt 0.016f              // Time step
 #define h1 1.0f                // Smoothing length
 #define h2 h1 *h1              // Smoothing length squared
+#define h5 h2 *h2 *h1          // Smoothing length to the power of 5
 #define h6 h2 *h2 *h2          // Smoothing length to the power of 6
 #define h9 h6 *h2 *h1          // Smoothing length to the power of 9
-#define BULK_MODULUS 1000.0f   // Stiffness
+#define BULK_MODULUS 10.0f    // Stiffness
+#define BULK_MODULUS_NEAR 1.0f    // Stiffness
 #define mu 0.1f                // Viscosity
 #define gravity 9.81f          // Gravity
 #define EPSILON 0.0001f        // Boundary epsilon
