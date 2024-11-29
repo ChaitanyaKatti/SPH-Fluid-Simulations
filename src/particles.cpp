@@ -227,7 +227,7 @@ void Particles::applyForces()
                         glm::vec3 r = positions[neighbor] - positions[i];
                         float sqrt_r = glm::length(r);
                         forces[i] += (MASS / (2.0f * densities[neighbor])) * ((pressures[i] + pressures[neighbor]) * spikyGradient(r, sqrt_r) + (nearPressures[i] + nearPressures[neighbor]) * spikyGradientNear(r, sqrt_r)); // Pressure term
-                        forces[i] += mu * MASS * (velocities[neighbor] - velocities[i]) / (densities[neighbor]) * viscosityLaplacian(sqrt_r);                                                                                  // Viscosity term
+                        forces[i] += mu * MASS * (velocities[neighbor] - velocities[i]) / (densities[neighbor]) * viscosityLaplacian(sqrt_r);                                                                                 // Viscosity term
                     }
                 }
             }
@@ -286,7 +286,7 @@ void Particles::resolveCollisions()
 #pragma omp parallel for
     for (int i = 0; i < NUM_INS; i++)
     {
-        for(int x = -1; x <= 1; x++)
+        for (int x = -1; x <= 1; x++)
         {
             if ((positions[i].x < 1 && x == -1) || (positions[i].x > 9 && x == 1))
                 continue;

@@ -14,9 +14,9 @@ private:
 
     unsigned int VAO, VBO;
 
-    int* startIndex;
-    int* stopIndex;
-    int* indexArray;
+    int *startIndex;
+    int *stopIndex;
+    int *indexArray;
 
     // Smoothed Particle Hydrodynamics
     float *densities;
